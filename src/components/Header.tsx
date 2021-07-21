@@ -47,8 +47,7 @@ export default function Header() {
           <div style={{ display: "flex", flex: 1 }}>
             <SerumLogoButton />
             <BarButton label="Multisig" hrefClient="/" />
-            <BarButton label="Trade" href="https://dex.projectserum.com" />
-            <BarButton label="Stake" href="https://stake.projectserum.com" />
+            <BarButton label="Stake" href="https://marinade.finance" />
             <BarButton
               label="Lockup"
               href="https://stake.projectserum.com/#/lockup"
@@ -126,7 +125,7 @@ function SerumLogoButton() {
               height: "35px",
             }}
             alt="Logo"
-            src="http://dex.projectserum.com/static/media/logo.49174c73.svg"
+            src="/marinade-logo.avif"
           />
         </div>
       </Button>

@@ -58,19 +58,37 @@ export const networks: Networks = {
     url: "https://solana-api.projectserum.com",
     explorerClusterSuffix: "",
     multisigProgramId: new PublicKey(
-      "A9HAbnCwoD6f2NkZobKFf6buJoN9gUVVvX5PoUnDHS6u"
+      "A6ZR2g7UiGobEr2YkRxd1HSbc5PoKMnyDGAKh2JkWgMg"
     ),
     multisigUpgradeAuthority: new PublicKey(
-      "3uztpEgUmvirDBYRXgDamUDZiU5EcgTwArQ2pULtHJPC"
+      "3Pb4Q6XcZCCgz7Gvd229YzFoU1DpQ4myUQFx8Z9AauQ6"
+    ),
+    defaultMultisig: new PublicKey(
+      "1YCaMif84S2RSc83eiuGijeRiKXisGT62Mui7LbDHhN"
+    ),
+  },
+  testnet: {
+    // Cluster.
+    label: "Testnet",
+    url: "https://api.testnet.solana.com",
+    explorerClusterSuffix: "devnet",
+    multisigProgramId: new PublicKey(
+      "A6ZR2g7UiGobEr2YkRxd1HSbc5PoKMnyDGAKh2JkWgMg"
+    ),
+    multisigUpgradeAuthority: new PublicKey(
+      "3Pb4Q6XcZCCgz7Gvd229YzFoU1DpQ4myUQFx8Z9AauQ6"
+    ),
+    defaultMultisig: new PublicKey(
+      "1YCaMif84S2RSc83eiuGijeRiKXisGT62Mui7LbDHhN"
     ),
   },
   devnet: {
     // Cluster.
     label: "Devnet",
-    url: "https://devnet.solana.com",
+    url: "https://api.devnet.solana.com",
     explorerClusterSuffix: "devnet",
     multisigProgramId: new PublicKey(
-      "F3Uf5F61dmht1xuNNNkk3jnzj82TY56vVjVEhZALRkN"
+      "A6ZR2g7UiGobEr2YkRxd1HSbc5PoKMnyDGAKh2JkWgMg"
     ),
   },
   // Fill in with your local cluster addresses.
@@ -80,7 +98,7 @@ export const networks: Networks = {
     url: "http://localhost:8899",
     explorerClusterSuffix: "localhost",
     multisigProgramId: new PublicKey(
-      "9z7Pq56To96qbVLzuBcf47Lc7u8uUWZh6k5rhcaTsDjz"
+      "A6ZR2g7UiGobEr2YkRxd1HSbc5PoKMnyDGAKh2JkWgMg"
     ),
   },
 };
@@ -89,7 +107,7 @@ export const initialState: State = {
   common: {
     isWalletConnected: false,
     walletProvider: "https://www.sollet.io",
-    network: networks.mainnet,
+    network: networks.testnet,
   },
 };
 
@@ -101,5 +119,6 @@ export type Network = {
   url: string;
   explorerClusterSuffix: string;
   multisigProgramId: PublicKey;
+  defaultMultisig?: PublicKey;
   multisigUpgradeAuthority?: PublicKey;
 };

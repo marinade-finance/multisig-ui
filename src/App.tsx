@@ -51,9 +51,9 @@ function App() {
 function MultisigPage() {
   const { hash } = window.location;
   if (hash) {
-    window.location.href = `/#/${networks.mainnet.multisigUpgradeAuthority!.toString()}`;
+    window.location.href = `/#/${networks.mainnet.defaultMultisig!.toString()}`;
   }
-  const multisig = networks.mainnet.multisigUpgradeAuthority;
+  const multisig = networks.mainnet.defaultMultisig;
   return <Multisig multisig={multisig} />;
 }
 
