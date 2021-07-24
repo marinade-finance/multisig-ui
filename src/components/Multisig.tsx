@@ -433,6 +433,7 @@ function TxListItem({
     }
   );
   const approve = async () => {
+    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
     enqueueSnackbar("Approving transaction", {
       variant: "info",
     });
@@ -812,6 +813,7 @@ function ChangeThresholdListItemDetails({
   // @ts-ignore
   const { enqueueSnackbar } = useSnackbar();
   const changeThreshold = async () => {
+    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
     enqueueSnackbar("Creating change threshold transaction", {
       variant: "info",
     });
@@ -933,6 +935,7 @@ function SetOwnersListItemDetails({
   const [participants, setParticipants] = useState([zeroAddr]);
   const { enqueueSnackbar } = useSnackbar();
   const setOwners = async () => {
+    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
     enqueueSnackbar("Creating setOwners transaction", {
       variant: "info",
     });
@@ -1076,6 +1079,7 @@ function UpgradeIdlListItemDetails({
   const { multisigClient } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
+    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
     enqueueSnackbar("Creating transaction", {
       variant: "info",
     });
@@ -1214,6 +1218,7 @@ function UpgradeProgramListItemDetails({
   const { multisigClient } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
+    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
     enqueueSnackbar("Creating transaction", {
       variant: "info",
     });

@@ -125,7 +125,7 @@ function SerumLogoButton() {
               height: "35px",
             }}
             alt="Logo"
-            src="/marinade-logo.avif"
+            src="marinade-logo.avif"
           />
         </div>
       </Button>
