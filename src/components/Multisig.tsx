@@ -54,6 +54,17 @@ import { ViewTransactionOnExplorerButton } from "./Notification";
 import * as idl from "../utils/idl";
 import { networks } from "../store/reducer";
 
+// Seed for generating the idlAddress.
+function seed(): string {
+  return "anchor:idl";
+}
+
+// Deterministic IDL address as a function of the program id.
+async function idlAddress(programId: PublicKey): Promise<PublicKey> {
+  const base = (await PublicKey.findProgramAddress([], programId))[0];
+  return await PublicKey.createWithSeed(base, seed(), programId);
+}
+
 export default function Multisig({ multisig }: { multisig?: PublicKey }) {
   return (
     <div>
@@ -100,13 +111,12 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
   const [multisigAccount, setMultisigAccount] = useState<any>(undefined);
   const [transactions, setTransactions] = useState<any>(null);
   const [showSignerDialog, setShowSignerDialog] = useState(false);
-  const [showAddTransactionDialog, setShowAddTransactionDialog] = useState(
-    false
-  );
+  const [showAddTransactionDialog, setShowAddTransactionDialog] =
+    useState(false);
   const [forceRefresh, setForceRefresh] = useState(false);
   useEffect(() => {
-    multisigClient.account
-      .multisig(multisig)
+    multisigClient.account.multisig
+      .fetch(multisig)
       .then((account: any) => {
         setMultisigAccount(account);
       })
@@ -241,7 +251,7 @@ export function NewMultisigDialog({
   const { enqueueSnackbar } = useSnackbar();
   const [threshold, setThreshold] = useState(2);
   // @ts-ignore
-  const zeroAddr = new PublicKey().toString();
+  const zeroAddr = PublicKey.default.toString();
   const [participants, setParticipants] = useState([zeroAddr]);
   const _onClose = () => {
     onClose();
@@ -314,7 +324,9 @@ export function NewMultisigDialog({
           label="Max Number of Participants (cannot grow the owner set past this)"
           value={maxParticipantLength}
           type="number"
-          onChange={(e) => setMaxParticipantLength(parseInt(e.target.value) as number)}
+          onChange={(e) =>
+            setMaxParticipantLength(parseInt(e.target.value) as number)
+          }
         />
         {participants.map((p, idx) => (
           <TextField
@@ -433,7 +445,8 @@ function TxListItem({
     }
   );
   const approve = async () => {
-    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
+    if (!multisigClient.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     enqueueSnackbar("Approving transaction", {
       variant: "info",
     });
@@ -813,7 +826,8 @@ function ChangeThresholdListItemDetails({
   // @ts-ignore
   const { enqueueSnackbar } = useSnackbar();
   const changeThreshold = async () => {
-    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
+    if (!multisigClient.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     enqueueSnackbar("Creating change threshold transaction", {
       variant: "info",
     });
@@ -931,11 +945,12 @@ function SetOwnersListItemDetails({
 }) {
   const { multisigClient } = useWallet();
   // @ts-ignore
-  const zeroAddr = new PublicKey().toString();
+  const zeroAddr = PublicKey.default.toString();
   const [participants, setParticipants] = useState([zeroAddr]);
   const { enqueueSnackbar } = useSnackbar();
   const setOwners = async () => {
-    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
+    if (!multisigClient.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     enqueueSnackbar("Creating setOwners transaction", {
       variant: "info",
     });
@@ -1079,13 +1094,14 @@ function UpgradeIdlListItemDetails({
   const { multisigClient } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
-    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
+    if (!multisigClient.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     enqueueSnackbar("Creating transaction", {
       variant: "info",
     });
     const programAddr = new PublicKey(programId as string);
     const bufferAddr = new PublicKey(buffer as string);
-    const idlAddr = await anchor.utils.idlAddress(programAddr);
+    const idlAddr = await idlAddress(programAddr);
     const [multisigSigner] = await PublicKey.findProgramAddress(
       [multisig.toBuffer()],
       multisigClient.programId
@@ -1218,7 +1234,8 @@ function UpgradeProgramListItemDetails({
   const { multisigClient } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
-    if (!multisigClient.provider.wallet.publicKey) throw Error("Wallet not connected");
+    if (!multisigClient.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     enqueueSnackbar("Creating transaction", {
       variant: "info",
     });
@@ -1228,9 +1245,8 @@ function UpgradeProgramListItemDetails({
     const data = Buffer.from([3, 0, 0, 0]);
 
     const programAccount = await (async () => {
-      const programAccount = await multisigClient.provider.connection.getAccountInfo(
-        programAddr
-      );
+      const programAccount =
+        await multisigClient.provider.connection.getAccountInfo(programAddr);
       if (programAccount === null) {
         throw new Error("Invalid program ID");
       }
