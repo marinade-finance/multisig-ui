@@ -346,7 +346,7 @@ export function NewMultisigDialog({
             onClick={() => {
               const p = [...participants];
               // @ts-ignore
-              p.push(new PublicKey().toString());
+              p.push(new PublicKey("11111111111111111111111111111111").toString());
               setParticipants(p);
             }}
           >
@@ -1028,7 +1028,7 @@ function SetOwnersListItemDetails({
           onClick={() => {
             const p = [...participants];
             // @ts-ignore
-            p.push(new PublicKey().toString());
+            p.push(new PublicKey("11111111111111111111111111111111").toString());
             setParticipants(p);
           }}
         >

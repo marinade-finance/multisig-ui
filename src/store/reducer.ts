@@ -73,13 +73,15 @@ export const networks: Networks = {
     url: "https://api.testnet.solana.com",
     explorerClusterSuffix: "devnet",
     multisigProgramId: new PublicKey(
-      "A6ZR2g7UiGobEr2YkRxd1HSbc5PoKMnyDGAKh2JkWgMg"
+      "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
+      //"A6ZR2g7UiGobEr2YkRxd1HSbc5PoKMnyDGAKh2JkWgMg"
     ),
     multisigUpgradeAuthority: new PublicKey(
       "3Pb4Q6XcZCCgz7Gvd229YzFoU1DpQ4myUQFx8Z9AauQ6"
     ),
     defaultMultisig: new PublicKey(
-      "1YCaMif84S2RSc83eiuGijeRiKXisGT62Mui7LbDHhN"
+      "BodZA4qfN9ggbmCzCyRyruPnVHbFyALZcYqBy1SgNusK"
+      //"1YCaMif84S2RSc83eiuGijeRiKXisGT62Mui7LbDHhN"
     ),
   },
   devnet: {
