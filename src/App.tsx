@@ -49,11 +49,12 @@ function App() {
 }
 
 function MultisigPage() {
+  const state = store.getState()
   const { hash } = window.location;
   if (hash) {
-    window.location.href = `#/${networks.mainnet.defaultMultisig!.toString()}`;
+    window.location.href = `#/${state.common.network.defaultMultisig!.toString()}`;
   }
-  const multisig = networks.mainnet.defaultMultisig;
+  const multisig = state.common.network.defaultMultisig;
   return <Multisig multisig={multisig} />;
 }
 
