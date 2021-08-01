@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router";
 import { useSnackbar } from "notistack";
-import { encode as encodeBase64 } from "js-base64";
+import { fromUint8Array as fromUint8ArrayToBase64 } from "js-base64";
 import Container from "@material-ui/core/Container";
 import AppBar from "@material-ui/core/AppBar";
 import GavelIcon from "@material-ui/icons/Gavel";
@@ -419,7 +419,7 @@ function TxListItem({
             textAlign: "left",
           }}
         >
-          {encodeBase64(txAccount.data)}
+          {fromUint8ArrayToBase64(txAccount.data)}
         </code>
       ),
     },
