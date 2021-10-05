@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "type": "pwa-chrome",
+            "name": "http://localhost:3000/multisig-ui#/9aN4drMhmd8AX3eRdYvH1gbZiPmwgGJfjvneCECF97HD",
+            "request": "launch",
+            "url": "http://localhost:3000/multisig-ui#/9aN4drMhmd8AX3eRdYvH1gbZiPmwgGJfjvneCECF97HD"
+        }
+    ]
+}

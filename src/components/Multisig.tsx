@@ -397,7 +397,21 @@ function TxListItem({
         setTxAccount(account);
       });
   }, [multisigClient, multisig, tx.publicKey]);
+
+  let translated = "";
+  if (txAccount.programId.toString() === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" &&
+    txAccount.data[0] === 3 // 3=>SPL-Token-Transfer
+  ) {
+    let slice = txAccount.data.slice(1, 9);
+    let amount = new BN(slice, 'le').fromTwos(64);
+    translated = "Transfer " + amount.toNumber() / 1e9 + " from " + txAccount.accounts[0].pubkey.toBase58() + " to " + txAccount.accounts[1].pubkey.toBase58();
+  }
+
   const rows = [
+    {
+      field: "Decoded",
+      value: translated,
+    },
     {
       field: "Program ID",
       value: txAccount.programId.toString(),
