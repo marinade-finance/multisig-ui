@@ -1,8 +1,8 @@
 {
   "files": {
     "main.css": "/multisig-ui/static/css/main.4a4137e4.chunk.css",
-    "main.js": "/multisig-ui/static/js/main.b934a9d2.chunk.js",
-    "main.js.map": "/multisig-ui/static/js/main.b934a9d2.chunk.js.map",
+    "main.js": "/multisig-ui/static/js/main.5e2d74f8.chunk.js",
+    "main.js.map": "/multisig-ui/static/js/main.5e2d74f8.chunk.js.map",
     "runtime-main.js": "/multisig-ui/static/js/runtime-main.3614f121.js",
     "runtime-main.js.map": "/multisig-ui/static/js/runtime-main.3614f121.js.map",
     "static/js/2.3253eaf9.chunk.js": "/multisig-ui/static/js/2.3253eaf9.chunk.js",
@@ -17,6 +17,6 @@
     "static/js/runtime-main.3614f121.js",
     "static/js/2.3253eaf9.chunk.js",
     "static/css/main.4a4137e4.chunk.css",
-    "static/js/main.b934a9d2.chunk.js"
+    "static/js/main.5e2d74f8.chunk.js"
   ]
 }
