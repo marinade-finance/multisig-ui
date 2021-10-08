@@ -398,6 +398,7 @@ function TxListItem({
       });
   }, [multisigClient, multisig, tx.publicKey]);
 
+  let txData = fromUint8ArrayToBase64(txAccount.data)
   let translated = "";
   if (txAccount.programId.toString() === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" &&
     txAccount.data[0] === 3 // 3=>SPL-Token-Transfer
@@ -406,6 +407,15 @@ function TxListItem({
     let amount = new BN(slice, 'le').fromTwos(64);
     translated = "Transfer " + amount.toNumber() / 1e9 + " from " + txAccount.accounts[0].pubkey.toBase58() + " to " + txAccount.accounts[1].pubkey.toBase58();
   }
+  // TODO - include Marinade.IDL and decode instruction Data
+  /*else if (txAccount.programId.toString() === "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD" &&
+    txData.startsWith("QwMicr")) {
+    translated = "Marinade"
+    let slice = txAccount.data.slice(8, 8 + 3);
+    let bn = new BN(slice, 'le').fromTwos(64);
+    translated = bn.toString()
+  }
+  */
 
   const rows = [
     {
@@ -433,7 +443,7 @@ function TxListItem({
             textAlign: "left",
           }}
         >
-          {fromUint8ArrayToBase64(txAccount.data)}
+          {txData}
         </code>
       ),
     },
