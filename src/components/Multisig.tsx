@@ -36,6 +36,7 @@ import Dialog from "@material-ui/core/Dialog";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogActions from "@material-ui/core/DialogActions";
 import AddIcon from "@material-ui/icons/Add";
+import ShowIcon from "@material-ui/icons/RemoveRedEye";
 import List from "@material-ui/core/List";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItem from "@material-ui/core/ListItem";
@@ -53,6 +54,7 @@ import { useWallet } from "./WalletProvider";
 import { ViewTransactionOnExplorerButton } from "./Notification";
 import * as idl from "../utils/idl";
 import { networks } from "../store/reducer";
+import { ComponentCreator } from "@material-ui/core";
 
 // Seed for generating the idlAddress.
 function seed(): string {
@@ -111,8 +113,8 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
   const [multisigAccount, setMultisigAccount] = useState<any>(undefined);
   const [transactions, setTransactions] = useState<any>(null);
   const [showSignerDialog, setShowSignerDialog] = useState(false);
-  const [showAddTransactionDialog, setShowAddTransactionDialog] =
-    useState(false);
+  const [showAddTransactionDialog, setShowAddTransactionDialog] = useState(false);
+  const [showExecuted, setShowExecuted] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(false);
   useEffect(() => {
     multisigClient.account.multisig
@@ -190,33 +192,25 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
                     <AddIcon />
                   </IconButton>
                 </Tooltip>
+                <Tooltip title="Show/Hide Executed" arrow>
+                  <IconButton onClick={() => setShowExecuted(!showExecuted)}>
+                    <ShowIcon />
+                  </IconButton>
+                </Tooltip>
               </Toolbar>
+
             </AppBar>
             <List disablePadding>
-              {transactions === null ? (
-                <div style={{ padding: "16px" }}>
-                  <CircularProgress
-                    style={{
-                      display: "block",
-                      marginLeft: "auto",
-                      marginRight: "auto",
-                    }}
-                  />
-                </div>
-              ) : transactions.length === 0 ? (
-                <ListItem>
-                  <ListItemText primary="No transactions found" />
-                </ListItem>
-              ) : (
-                transactions.map((tx: any) => (
-                  <TxListItem
-                    key={tx.publicKey.toString()}
-                    multisig={multisig}
-                    multisigAccount={multisigAccount}
-                    tx={tx}
-                  />
-                ))
-              )}
+              {renderItems(showExecuted, multisig, multisigAccount, transactions)
+                // transactions.map((tx: any) => (
+                //   <TxListItem
+                //     key={tx.publicKey.toString()}
+                //     multisig={multisig}
+                //     multisigAccount={multisigAccount}
+                //     tx={tx}
+                //   />
+                // ))
+              }
             </List>
           </Paper>
         )}
@@ -237,6 +231,49 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
       )}
     </Container>
   );
+}
+
+type MultisigTransaction = {
+  publicKey: PublicKey
+  account: {
+    didExecute: boolean
+  }
+}
+
+function renderItems(showExecuted: boolean, multisig: any, multisigAccount: any, transactions: MultisigTransaction[]) {
+  if (transactions === null) {
+    return <div style={{ padding: "16px" }}>
+      <CircularProgress
+        style={{
+          display: "block",
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      />
+    </div>
+  }
+  if (transactions.length === 0) {
+    return <ListItem>
+      <ListItemText primary="No transactions found" />
+    </ListItem>
+  }
+  let result = []
+  for (let tx of transactions) {
+    // hardcoded - ignore marinade deprecated txs
+    // TODO - add "deprecated" condition to a tx (BE)
+    const key = tx.publicKey.toBase58()
+    if (key !== "AsaE7fbkmBTbq3MGKNZ15w1eUY9nikzafn7TvNn9ZvQf" && key !== "2qito92LRcGsE4wgmxTUdeBhYoDicjEi8CAM3rPbi8cQ")
+      if (showExecuted || !tx.account.didExecute) {
+        result.push(
+          <TxListItem
+            key={tx.publicKey.toString()}
+            multisig={multisig}
+            multisigAccount={multisigAccount}
+            tx={tx}
+          />)
+      }
+  }
+  return result
 }
 
 export function NewMultisigDialog({
