@@ -442,7 +442,7 @@ function TxListItem({
   ) {
     let slice = txAccount.data.slice(1, 9);
     let amount = new BN(slice, 'le').fromTwos(64);
-    translated = "Transfer " + amount.toNumber() / 1e9 + " from " + txAccount.accounts[0].pubkey.toBase58() + " to " + txAccount.accounts[1].pubkey.toBase58();
+    translated = "Transfer " + BigInt(amount.toString()) / BigInt(1e9) + " from " + txAccount.accounts[0].pubkey.toBase58() + " to " + txAccount.accounts[1].pubkey.toBase58();
   }
   // TODO - include Marinade.IDL and decode instruction Data
   /*else if (txAccount.programId.toString() === "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD" &&
