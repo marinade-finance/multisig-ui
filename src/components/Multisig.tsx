@@ -259,10 +259,13 @@ function renderItems(showExecuted: boolean, multisig: any, multisigAccount: any,
   }
   let result = []
   for (let tx of transactions) {
-    // hardcoded - ignore marinade deprecated txs
+    // hardcoded - ignore/hide marinade deprecated txs
     // TODO - add "deprecated" condition to a tx (BE)
     const key = tx.publicKey.toBase58()
-    if (key !== "AsaE7fbkmBTbq3MGKNZ15w1eUY9nikzafn7TvNn9ZvQf" && key !== "2qito92LRcGsE4wgmxTUdeBhYoDicjEi8CAM3rPbi8cQ")
+    if (key !== "AsaE7fbkmBTbq3MGKNZ15w1eUY9nikzafn7TvNn9ZvQf"
+      && key !== "2qito92LRcGsE4wgmxTUdeBhYoDicjEi8CAM3rPbi8cQ"
+      && key !== "7F5aEkm5PHDWAEe7WgT12q8Anijkx6gXQq8hATdhV7Rr"
+    )
       if (showExecuted || !tx.account.didExecute) {
         result.push(
           <TxListItem
