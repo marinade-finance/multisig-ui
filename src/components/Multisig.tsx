@@ -417,6 +417,49 @@ export function NewMultisigDialog({
   );
 }
 
+/**
+* Formats a BN with commas and 5,2, or 0 decimal places
+* @param {number} bn 
+*/
+export function toStringDecMin(bn: BN, decimals: number): string {
+  return addCommas(removeDecZeroes(withDecimalPoint(bn,decimals)));
+}
+function withDecimalPoint(bn: BN, decimals: number): string {
+  const s = bn.toString().padStart(decimals + 1, '0')
+  const l = s.length
+  return s.slice(0, l - decimals) + '.' + s.slice(-decimals)
+}
+
+/**
+* removes extra zeroes after the decimal point
+* it leaves >4,2, or none (never 3 to not confuse the international user)
+* @param {string} withDecPoint
+*/
+export function removeDecZeroes(withDecPoint: string): string {
+  let decPointPos = withDecPoint.indexOf('.')
+  if (decPointPos <= 0) return withDecPoint;
+  let decimals = withDecPoint.length - decPointPos - 1;
+  while (withDecPoint.endsWith("0") && decimals-- > 4) withDecPoint = withDecPoint.slice(0, -1);
+  if (withDecPoint.endsWith("00")) withDecPoint = withDecPoint.slice(0, -2)
+  if (withDecPoint.endsWith(".00")) withDecPoint = withDecPoint.slice(0, -3)
+  return withDecPoint;
+}
+/**
+ * adds commas to a string number 
+ * @param {string} str 
+ */
+export function addCommas(str: string) {
+  let n = str.indexOf(".")
+  if (n == -1) n = str.length
+  n -= 4
+  while (n >= 0) {
+    str = str.slice(0, n + 1) + "," + str.slice(n + 1)
+    n = n - 3
+  }
+  return str;
+}
+
+
 function TxListItem({
   multisig,
   multisigAccount,
@@ -445,7 +488,12 @@ function TxListItem({
   ) {
     let slice = txAccount.data.slice(1, 9);
     let amount = new BN(slice, 'le').fromTwos(64);
-    translated = "Transfer " + BigInt(amount.toString()) / BigInt(1e9) + " from " + txAccount.accounts[0].pubkey.toBase58() + " to " + txAccount.accounts[1].pubkey.toBase58();
+    // marinade patch - until we move to goki wallet
+    const from = txAccount.accounts[0].pubkey.toBase58()
+    const MarinadeUSDCAta = "9vKwu77KUVgmAYrB96PPMHrZtnvJXs9aKzFxfa71gDTX"
+    const decimals = from===MarinadeUSDCAta? 6: 9
+    const units = from===MarinadeUSDCAta? " USDC": ""
+    translated = "Transfer " + toStringDecMin(amount,decimals) + units + " from " + from + " to " + txAccount.accounts[1].pubkey.toBase58();
   }
   // TODO - include Marinade.IDL and decode instruction Data
   /*else if (txAccount.programId.toString() === "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD" &&
