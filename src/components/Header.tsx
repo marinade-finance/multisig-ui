@@ -12,12 +12,12 @@ import MenuItem from "@material-ui/core/MenuItem";
 import IconButton from "@material-ui/core/IconButton";
 import ExitToAppIcon from "@material-ui/icons/ExitToApp";
 import Button from "@material-ui/core/Button";
-import PersonIcon from "@material-ui/icons/Person";
 import BubbleChartIcon from "@material-ui/icons/BubbleChart";
 import SearchIcon from "@material-ui/icons/Search";
 import { PublicKey } from "@solana/web3.js";
 import { networks, State as StoreState, ActionType } from "../store/reducer";
-import { useWallet } from "./WalletProvider";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export default function Header() {
   const { wallet } = useWallet();
@@ -88,10 +88,10 @@ export default function Header() {
             }}
           >
             <NetworkSelector />
-            {!wallet.publicKey ? (
+            {!wallet?.adapter.publicKey ? (
               <WalletConnectButton
                 style={{
-                  display: wallet.publicKey ? "none" : "",
+                  display: wallet?.adapter.publicKey ? "none" : "",
                 }}
               />
             ) : (
@@ -244,7 +244,7 @@ function UserSelector() {
       renderValue={() => {
         return (
           <Typography style={{ overflow: "hidden" }}>
-            {wallet.publicKey?.toString()}
+            {wallet?.adapter.publicKey?.toString()}
           </Typography>
         );
       }}
@@ -254,7 +254,7 @@ function UserSelector() {
       }}
       onChange={(e) => {
         if (e.target.value === "disconnect") {
-          wallet.disconnect();
+          wallet?.adapter.disconnect();
         }
       }}
     >
@@ -281,12 +281,12 @@ export function WalletConnectButton(
     };
   });
   const dispatch = useDispatch();
-  const { wallet, multisigClient } = useWallet();
+  const { wallets, wallet } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
 
   // Wallet connection event listeners.
   useEffect(() => {
-    wallet.on("disconnect", () => {
+    wallet?.adapter.on("disconnect", () => {
       enqueueSnackbar("Disconnected from wallet", {
         variant: "info",
         autoHideDuration: 2500,
@@ -300,19 +300,19 @@ export function WalletConnectButton(
         item: {},
       });
     });
-    wallet.on("connect", async () => {
+    wallet?.adapter.on("connect", async () => {
       dispatch({
         type: ActionType.CommonWalletDidConnect,
         item: {},
       });
     });
-  }, [wallet, dispatch, enqueueSnackbar, multisigClient.provider.connection]);
+  }, [wallet, dispatch, enqueueSnackbar]);
 
   return showDisconnect ? (
     <Button
       style={props.style}
       color="inherit"
-      onClick={() => wallet.disconnect()}
+      onClick={() => wallet?.adapter.disconnect()}
     >
       <ExitToAppIcon />
       <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
@@ -320,16 +320,7 @@ export function WalletConnectButton(
       </Typography>
     </Button>
   ) : (
-    <Button
-      style={props.style}
-      color="inherit"
-      onClick={() => wallet.connect()}
-    >
-      <PersonIcon />
-      <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
-        Connect wallet
-      </Typography>
-    </Button>
+    <WalletMultiButton />
   );
 }
 

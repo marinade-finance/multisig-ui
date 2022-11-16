@@ -1,4 +1,3 @@
-import React from "react";
 import { Provider } from "react-redux";
 import { useHistory, useLocation } from "react-router";
 import { HashRouter, Route } from "react-router-dom";
@@ -8,10 +7,10 @@ import CssBaseline from "@material-ui/core/CssBaseline";
 import { unstable_createMuiStrictModeTheme as createMuiTheme } from "@material-ui/core/styles";
 import { PublicKey } from "@solana/web3.js";
 import { store } from "./store";
-import WalletProvider from "./components/WalletProvider";
+import WalletConnectionProvider from "./components/WalletProvider";
 import Layout from "./components/Layout";
 import Multisig from "./components/Multisig";
-import { networks } from "./store/reducer";
+import MultisigProvider from "./components/MultisigProvider";
 
 function App() {
   const theme = createMuiTheme({
@@ -29,20 +28,22 @@ function App() {
     <Provider store={store}>
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
-        <SnackbarProvider maxSnack={5} autoHideDuration={8000}>
-          <WalletProvider>
-            <HashRouter basename={"/"}>
-              <Layout>
-                <Route exact path="/" component={MultisigPage} />
-                <Route
-                  exact
-                  path="/:address"
-                  component={MultisigInstancePage}
-                />
-              </Layout>
-            </HashRouter>
-          </WalletProvider>
-        </SnackbarProvider>
+        {/* <SnackbarProvider maxSnack={5} autoHideDuration={8000}> */}
+          <WalletConnectionProvider>
+            <MultisigProvider>
+              <HashRouter basename={"/"}>
+                <Layout>
+                  <Route exact path="/" component={MultisigPage} />
+                  <Route
+                    exact
+                    path="/:address"
+                    component={MultisigInstancePage}
+                  />
+                </Layout>
+              </HashRouter>
+            </MultisigProvider>
+          </WalletConnectionProvider>
+        {/* </SnackbarProvider> */}
       </MuiThemeProvider>
     </Provider>
   );
