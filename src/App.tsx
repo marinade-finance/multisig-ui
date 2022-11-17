@@ -1,7 +1,6 @@
 import { Provider } from "react-redux";
 import { useHistory, useLocation } from "react-router";
 import { HashRouter, Route } from "react-router-dom";
-import { SnackbarProvider } from "notistack";
 import { MuiThemeProvider } from "@material-ui/core/styles";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import { unstable_createMuiStrictModeTheme as createMuiTheme } from "@material-ui/core/styles";
@@ -11,6 +10,7 @@ import WalletConnectionProvider from "./components/WalletProvider";
 import Layout from "./components/Layout";
 import Multisig from "./components/Multisig";
 import MultisigProvider from "./components/MultisigProvider";
+import { SnackbarProvider } from "notistack";
 
 function App() {
   const theme = createMuiTheme({
@@ -28,7 +28,7 @@ function App() {
     <Provider store={store}>
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
-        {/* <SnackbarProvider maxSnack={5} autoHideDuration={8000}> */}
+        <SnackbarProvider maxSnack={5} autoHideDuration={8000}>
           <WalletConnectionProvider>
             <MultisigProvider>
               <HashRouter basename={"/"}>
@@ -43,7 +43,7 @@ function App() {
               </HashRouter>
             </MultisigProvider>
           </WalletConnectionProvider>
-        {/* </SnackbarProvider> */}
+        </SnackbarProvider>
       </MuiThemeProvider>
     </Provider>
   );
