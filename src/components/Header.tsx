@@ -1,7 +1,6 @@
 import { useState, ReactElement } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
-import { useSnackbar } from "notistack";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
 import Select from "@material-ui/core/Select";
@@ -17,17 +16,16 @@ import SearchIcon from "@material-ui/icons/Search";
 import { PublicKey } from "@solana/web3.js";
 import { networks, State as StoreState, ActionType } from "../store/reducer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletAdapter } from "@solana/wallet-adapter-base";
+import { Wallet } from "@solana/wallet-adapter-wallets";
 
 export default function Header() {
-  const { wallet } = useWallet();
+  const { publicKey } = useWallet();
   const history = useHistory();
   const [multisigAddress, setMultisigAddress] = useState("");
   const disabled = !isValidPubkey(multisigAddress);
   const searchFn = () => {
     history.push(`/${multisigAddress}`);
   };
-  const pubkey = (wallet?.adapter as unknown as WalletAdapter)?.publicKey;
   return (
     <AppBar
       position="static"
@@ -89,10 +87,10 @@ export default function Header() {
             }}
           >
             <NetworkSelector />
-            {!pubkey ? (
+            {!publicKey ? (
               <WalletConnectButton
                 style={{
-                  display: pubkey ? "none" : "",
+                  display: publicKey ? "none" : "",
                 }}
               />
             ) : (
@@ -237,8 +235,7 @@ function NetworkSelector() {
 }
 
 function UserSelector() {
-  const { wallet } = useWallet();
-  const adapter = wallet?.adapter as unknown as WalletAdapter;
+  const { publicKey, disconnect } = useWallet();
 
   return (
     <Select
@@ -246,7 +243,7 @@ function UserSelector() {
       renderValue={() => {
         return (
           <Typography style={{ overflow: "hidden" }}>
-            {adapter?.publicKey?.toString()}
+            {publicKey?.toString()}
           </Typography>
         );
       }}
@@ -256,7 +253,7 @@ function UserSelector() {
       }}
       onChange={(e) => {
         if (e.target.value === "disconnect") {
-          adapter?.disconnect();
+          disconnect();
         }
       }}
     >
@@ -277,65 +274,62 @@ type WalletConnectButtonProps = {
 export function WalletConnectButton(
   props: WalletConnectButtonProps
 ): ReactElement {
-  const { showDisconnect } = useSelector((state: StoreState) => {
-    return {
-      showDisconnect: state.common.isWalletConnected,
-    };
-  });
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
   const dispatch = useDispatch();
-  const { wallets, wallet, connect, disconnect, select } = useWallet();
-  const { enqueueSnackbar } = useSnackbar();
+  const { wallets, connect, disconnect, select } = useWallet();
 
-  return showDisconnect ? (
-    <Button
-      style={props.style}
-      color="inherit"
-      onClick={() => {
-        disconnect()
-        enqueueSnackbar("Disconnected from wallet", {
-          variant: "info",
-          autoHideDuration: 2500,
-        });
-        dispatch({
-          type: ActionType.CommonWalletDidDisconnect,
-          item: {},
-        });
-        dispatch({
-          type: ActionType.CommonTriggerShutdown,
-          item: {},
-        });
-      }}
-    >
-      <ExitToAppIcon />
-      <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
-        Disconnect
-      </Typography>
-    </Button>
-  ) : (
-    <Button
-      style={props.style}
-      color="inherit"
-      onClick={async () => {
-        try {
-          select(wallets[0].name)
-          if (wallet) {
-            await connect();
-            dispatch({
-              type: ActionType.CommonWalletDidConnect,
-              item: {},
-            });
-          }
-        } catch (e) {
-          console.log(e);
-          await disconnect();
-        }
-      }}
-    >
-      {/* <PersonIcon /> */}
-      <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
-        Connect wallet
-      </Typography>
-    </Button>
+  const connectWallet = async (selectedWallet: Wallet) => {
+    try {
+      select(selectedWallet.name)
+      await connect();
+      dispatch({
+        type: ActionType.CommonWalletDidConnect,
+        item: {},
+      });
+    } catch (e) {
+      console.log(e);
+      await disconnect();
+    }
+  }
+
+  return (
+    <>
+      <Button
+        id="demo-positioned-button"
+        aria-controls={open ? 'demo-positioned-menu' : undefined}
+        aria-haspopup="true"
+        aria-expanded={open ? 'true' : undefined}
+        onClick={handleClick}
+      >
+        Select wallet
+      </Button>
+      <Menu
+        id="demo-positioned-menu"
+        aria-labelledby="demo-positioned-button"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        {wallets.map((walletItem, i) => {     
+          return (<MenuItem key={walletItem.name} onClick={() => connectWallet(walletItem)}>{walletItem.name}</MenuItem>) 
+        })}
+      </Menu>
+    </>
   );
 }
 

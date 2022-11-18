@@ -16,7 +16,7 @@ export default function WalletConnectionProvider(
   );
 
   return (
-    <WalletProvider wallets={wallets} autoConnect>
+    <WalletProvider wallets={wallets}>
       {props.children}
     </WalletProvider>
   );
