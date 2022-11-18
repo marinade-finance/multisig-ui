@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactElement } from "react";
+import { useState, ReactElement } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
 import { useSnackbar } from "notistack";
@@ -17,7 +17,6 @@ import SearchIcon from "@material-ui/icons/Search";
 import { PublicKey } from "@solana/web3.js";
 import { networks, State as StoreState, ActionType } from "../store/reducer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletAdapter } from "@solana/wallet-adapter-base";
 
 export default function Header() {
@@ -284,40 +283,28 @@ export function WalletConnectButton(
     };
   });
   const dispatch = useDispatch();
-  const { wallet } = useWallet();
-  const adapter = wallet?.adapter as unknown as WalletAdapter;
+  const { wallets, wallet, connect, disconnect, select } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
-
-  // Wallet connection event listeners.
-  useEffect(() => {
-    adapter?.on("disconnect", () => {
-      enqueueSnackbar("Disconnected from wallet", {
-        variant: "info",
-        autoHideDuration: 2500,
-      });
-      dispatch({
-        type: ActionType.CommonWalletDidDisconnect,
-        item: {},
-      });
-      dispatch({
-        type: ActionType.CommonTriggerShutdown,
-        item: {},
-      });
-    });
-    adapter?.on("connect", async () => {
-      console.log("check")
-      dispatch({
-        type: ActionType.CommonWalletDidConnect,
-        item: {},
-      });
-    });
-  }, [adapter, dispatch, enqueueSnackbar]);
 
   return showDisconnect ? (
     <Button
       style={props.style}
       color="inherit"
-      onClick={() => adapter.disconnect()}
+      onClick={() => {
+        disconnect()
+        enqueueSnackbar("Disconnected from wallet", {
+          variant: "info",
+          autoHideDuration: 2500,
+        });
+        dispatch({
+          type: ActionType.CommonWalletDidDisconnect,
+          item: {},
+        });
+        dispatch({
+          type: ActionType.CommonTriggerShutdown,
+          item: {},
+        });
+      }}
     >
       <ExitToAppIcon />
       <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
@@ -325,7 +312,30 @@ export function WalletConnectButton(
       </Typography>
     </Button>
   ) : (
-    <WalletMultiButton onClick={() => console.log("click")} />
+    <Button
+      style={props.style}
+      color="inherit"
+      onClick={async () => {
+        try {
+          select(wallets[0].name)
+          if (wallet) {
+            await connect();
+            dispatch({
+              type: ActionType.CommonWalletDidConnect,
+              item: {},
+            });
+          }
+        } catch (e) {
+          console.log(e);
+          await disconnect();
+        }
+      }}
+    >
+      {/* <PersonIcon /> */}
+      <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
+        Connect wallet
+      </Typography>
+    </Button>
   );
 }
 
