@@ -24,7 +24,7 @@ export async function withTx(
       action: <ViewTransactionOnExplorerButton signature={tx} />,
     });
   } catch (err) {
-    snack.enqueueSnackbar(`Error: ${err}`, {
+    snack.enqueueSnackbar(`Error: ${(err as Error).message}`, {
       variant: "error",
     });
   }
