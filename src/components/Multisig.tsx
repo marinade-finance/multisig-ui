@@ -53,6 +53,7 @@ import { ViewTransactionOnExplorerButton } from "./Notification";
 import * as idl from "../utils/idl";
 import { networks } from "../store/reducer";
 import { useMultisig } from "./MultisigProvider";
+import { AccountBalanceWallet } from "@material-ui/icons";
 
 // Seed for generating the idlAddress.
 function seed(): string {
@@ -873,6 +874,11 @@ function AddTransactionDialog({
           transaction.
         </DialogContentText>
         <List disablePadding>
+          <TransferMNDEListItem 
+            didAddTransaction={didAddTransaction}
+            multisig={multisig}
+            onClose={onClose}
+          />
           <ProgramUpdateListItem
             didAddTransaction={didAddTransaction}
             multisig={multisig}
@@ -1161,6 +1167,112 @@ function SetOwnersListItemDetails({
         }}
       >
         <Button onClick={() => setOwners()}>Set Owners</Button>
+      </div>
+    </div>
+  );
+}
+
+function TransferMNDEListItem({
+  multisig,
+  onClose,
+  didAddTransaction,
+}: {
+  multisig: PublicKey;
+  onClose: Function;
+  didAddTransaction: (tx: PublicKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ListItem button onClick={() => setOpen((open) => !open)}>
+        <ListItemIcon>
+          <AccountBalanceWallet />
+        </ListItemIcon>
+        <ListItemText primary={"Transfer MNDE"} />
+        {open ? <ExpandLess /> : <ExpandMore />}
+      </ListItem>
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <TransferMNDEListItemDetails
+          didAddTransaction={didAddTransaction}
+          multisig={multisig}
+          onClose={onClose}
+        />
+      </Collapse>
+    </>
+  );
+}
+
+function TransferMNDEListItemDetails({
+  multisig,
+  onClose,
+  didAddTransaction,
+}: {
+  multisig: PublicKey;
+  onClose: Function;
+  didAddTransaction: (tx: PublicKey) => void;
+}) {
+  const [destinationAccount, setDestinationAccount] = useState<null | string>(null);
+  const [amount, setAmount] = useState<null | number>(null);
+
+  const { multisigClient } = useMultisig();
+  const { enqueueSnackbar } = useSnackbar();
+  const transferMNDE = async () => {
+    if (!multisigClient?.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
+    enqueueSnackbar("Creating Transfer MNDE transaction", {
+      variant: "info",
+    });
+    enqueueSnackbar("Creating transaction", {
+      variant: "info",
+    });
+
+    const transaction = new Account();
+    const tx = await multisigClient.rpc.createTransaction(
+
+    );
+    console.log(destinationAccount, amount);
+    enqueueSnackbar("Transaction created", {
+      variant: "success",
+      action: <ViewTransactionOnExplorerButton signature={tx} />,
+    });
+    didAddTransaction(transaction.publicKey);
+    onClose();
+  };
+
+  return (
+    <div
+      style={{
+        background: "#f1f0f0",
+        paddingLeft: "24px",
+        paddingRight: "24px",
+      }}
+    >
+      <TextField
+        fullWidth
+        style={{ marginTop: "16px" }}
+        label="Destination account"
+        value={destinationAccount}
+        onChange={(e) => setDestinationAccount(e.target.value as string)}
+      />
+      <TextField
+        style={{ marginTop: "16px" }}
+        fullWidth
+        label="Amount to transfer"
+        value={amount}
+        type="number"
+        onChange={(e) => setAmount(Number(e.target.value))}
+      />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: "16px",
+          paddingBottom: "16px",
+        }}
+      >
+        <Button onClick={() => transferMNDE()}>
+          Propose MNDE Transfer
+        </Button>
       </div>
     </div>
   );
