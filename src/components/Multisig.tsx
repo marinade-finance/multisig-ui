@@ -54,6 +54,8 @@ import * as idl from "../utils/idl";
 import { networks } from "../store/reducer";
 import { useMultisig } from "./MultisigProvider";
 import { AccountBalanceWallet } from "@material-ui/icons";
+import { mndeTransferInstruction } from "../commands/mnde_transfer";
+import { store } from "../store";
 
 // Seed for generating the idlAddress.
 function seed(): string {
@@ -423,7 +425,7 @@ export function NewMultisigDialog({
 * @param {number} bn 
 */
 export function toStringDecMin(bn: BN, decimals: number): string {
-  return addCommas(removeDecZeroes(withDecimalPoint(bn,decimals)));
+  return addCommas(removeDecZeroes(withDecimalPoint(bn, decimals)));
 }
 function withDecimalPoint(bn: BN, decimals: number): string {
   const s = bn.toString().padStart(decimals + 1, '0')
@@ -489,12 +491,12 @@ function TxListItem({
   ) {
     let slice = txAccount.data.slice(1, 9);
     let amount = new BN(slice, 'le').fromTwos(64);
-    // marinade patch - until we move to goki wallet
+    // marinade patch - until we move to SPL-gov
     const from = txAccount.accounts[0].pubkey.toBase58()
     const MarinadeUSDCAta = "9vKwu77KUVgmAYrB96PPMHrZtnvJXs9aKzFxfa71gDTX"
-    const decimals = from===MarinadeUSDCAta? 6: 9
-    const units = from===MarinadeUSDCAta? " USDC": ""
-    translated = "Transfer " + toStringDecMin(amount,decimals) + units + " from " + from + " to " + txAccount.accounts[1].pubkey.toBase58();
+    const decimals = from === MarinadeUSDCAta ? 6 : 9
+    const units = from === MarinadeUSDCAta ? " USDC" : ""
+    translated = "Transfer " + toStringDecMin(amount, decimals) + units + " from " + from + " to " + txAccount.accounts[1].pubkey.toBase58();
   }
   // TODO - include Marinade.IDL and decode instruction Data
   /*else if (txAccount.programId.toString() === "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD" &&
@@ -645,7 +647,7 @@ function TxListItem({
                 execute().catch((err) => {
                   let errStr = "";
                   if (err) {
-                    errStr = err.toString();
+                    errStr = err.toString() + '\n' + err.logs? err.logs.join('\n'):"" 
                   }
                   enqueueSnackbar(`Unable to execute transaction: ${errStr}`, {
                     variant: "error",
@@ -874,7 +876,7 @@ function AddTransactionDialog({
           transaction.
         </DialogContentText>
         <List disablePadding>
-          <TransferMNDEListItem 
+          <TransferMNDEListItem
             didAddTransaction={didAddTransaction}
             multisig={multisig}
             onClose={onClose}
@@ -1214,29 +1216,68 @@ function TransferMNDEListItemDetails({
   const [destinationAccount, setDestinationAccount] = useState<null | string>(null);
   const [amount, setAmount] = useState<null | number>(null);
 
+  const state = store.getState()
+
   const { multisigClient } = useMultisig();
   const { enqueueSnackbar } = useSnackbar();
   const transferMNDE = async () => {
-    if (!multisigClient?.provider.wallet.publicKey)
-      throw Error("Wallet not connected");
-    enqueueSnackbar("Creating Transfer MNDE transaction", {
-      variant: "info",
-    });
-    enqueueSnackbar("Creating transaction", {
-      variant: "info",
-    });
+    try {
+      if (!multisigClient?.provider.wallet.publicKey) {
+        throw Error("Wallet not connected");
+      }
 
-    const transaction = new Account();
-    const tx = await multisigClient.rpc.createTransaction(
+      enqueueSnackbar("Creating Transfer MNDE transaction", {
+        variant: "info",
+      });
 
-    );
-    console.log(destinationAccount, amount);
-    enqueueSnackbar("Transaction created", {
-      variant: "success",
-      action: <ViewTransactionOnExplorerButton signature={tx} />,
-    });
-    didAddTransaction(transaction.publicKey);
-    onClose();
+      const [multisigSigner] = await PublicKey.findProgramAddress(
+        [multisig.toBuffer()],
+        multisigClient.programId
+      );
+
+      if (!destinationAccount) throw Error("destinationAccount is nothing")
+      if (!amount || amount <= 0) throw Error("amount must be >=0")
+      const splTransferInstruction = await mndeTransferInstruction(state.common.network.url, multisigClient, multisigSigner, destinationAccount, amount);
+      const independentAccountToStoreMultisigInstruction = new Account();
+      const txSize = 207; // pre-computed
+      const tx = await multisigClient.rpc.createTransaction(
+        splTransferInstruction.programId,
+        splTransferInstruction.keys,
+        splTransferInstruction.data,
+        {
+          accounts: {
+            multisig,
+            transaction: independentAccountToStoreMultisigInstruction.publicKey,
+            proposer: multisigClient.provider.wallet.publicKey,
+            rent: SYSVAR_RENT_PUBKEY,
+          },
+          // we need to sign with the account to create it
+          signers: [independentAccountToStoreMultisigInstruction],
+          // before invoking createTransaction, create an empty account to store it
+          instructions: [
+            await multisigClient.account.transaction.createInstruction(
+              independentAccountToStoreMultisigInstruction,
+              // @ts-ignore
+              txSize
+            ),
+          ],
+        }
+      );
+
+      console.log(destinationAccount, amount);
+      enqueueSnackbar("Transaction created", {
+        variant: "success",
+        action: <ViewTransactionOnExplorerButton signature={tx} />,
+      });
+      didAddTransaction(independentAccountToStoreMultisigInstruction.publicKey);
+      onClose();
+    } 
+    catch (ex) {
+      enqueueSnackbar("Error", {
+        variant: "error",
+        action: ex.message + "<br>" + ex.logs? ex.logs.join("<br>"):"",
+      });
+    }
   };
 
   return (
