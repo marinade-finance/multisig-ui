@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useHistory } from "react-router";
 import { useSnackbar } from "notistack";
 import { fromUint8Array as fromUint8ArrayToBase64 } from "js-base64";
@@ -36,6 +36,7 @@ import Dialog from "@material-ui/core/Dialog";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogActions from "@material-ui/core/DialogActions";
 import AddIcon from "@material-ui/icons/Add";
+import ShowIcon from "@material-ui/icons/RemoveRedEye";
 import List from "@material-ui/core/List";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItem from "@material-ui/core/ListItem";
@@ -48,11 +49,13 @@ import {
   SYSVAR_RENT_PUBKEY,
   SYSVAR_CLOCK_PUBKEY,
 } from "@solana/web3.js";
-import * as anchor from "@project-serum/anchor";
-import { useWallet } from "./WalletProvider";
 import { ViewTransactionOnExplorerButton } from "./Notification";
 import * as idl from "../utils/idl";
 import { networks } from "../store/reducer";
+import { useMultisig } from "./MultisigProvider";
+import { AccountBalanceWallet } from "@material-ui/icons";
+import { mndeTransferInstruction } from "../commands/mnde_transfer";
+import { store } from "../store";
 
 // Seed for generating the idlAddress.
 function seed(): string {
@@ -107,15 +110,15 @@ function NewMultisigButton() {
 }
 
 export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   const [multisigAccount, setMultisigAccount] = useState<any>(undefined);
   const [transactions, setTransactions] = useState<any>(null);
   const [showSignerDialog, setShowSignerDialog] = useState(false);
-  const [showAddTransactionDialog, setShowAddTransactionDialog] =
-    useState(false);
+  const [showAddTransactionDialog, setShowAddTransactionDialog] = useState(false);
+  const [showExecuted, setShowExecuted] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(false);
   useEffect(() => {
-    multisigClient.account.multisig
+    multisigClient?.account.multisig
       .fetch(multisig)
       .then((account: any) => {
         setMultisigAccount(account);
@@ -124,14 +127,14 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
         console.error(err);
         setMultisigAccount(null);
       });
-  }, [multisig, multisigClient.account]);
+  }, [multisig, multisigClient?.account]);
   useEffect(() => {
-    multisigClient.account.transaction.all(multisig.toBuffer()).then((txs) => {
+    multisigClient?.account.transaction.all(multisig.toBuffer()).then((txs) => {
       setTransactions(txs);
     });
-  }, [multisigClient.account.transaction, multisig, forceRefresh]);
+  }, [multisigClient?.account.transaction, multisig, forceRefresh]);
   useEffect(() => {
-    multisigClient.account.multisig
+    multisigClient?.account.multisig
       .subscribe(multisig)
       .on("change", (account) => {
         setMultisigAccount(account);
@@ -190,33 +193,25 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
                     <AddIcon />
                   </IconButton>
                 </Tooltip>
+                <Tooltip title="Show/Hide Executed" arrow>
+                  <IconButton onClick={() => setShowExecuted(!showExecuted)}>
+                    <ShowIcon />
+                  </IconButton>
+                </Tooltip>
               </Toolbar>
+
             </AppBar>
             <List disablePadding>
-              {transactions === null ? (
-                <div style={{ padding: "16px" }}>
-                  <CircularProgress
-                    style={{
-                      display: "block",
-                      marginLeft: "auto",
-                      marginRight: "auto",
-                    }}
-                  />
-                </div>
-              ) : transactions.length === 0 ? (
-                <ListItem>
-                  <ListItemText primary="No transactions found" />
-                </ListItem>
-              ) : (
-                transactions.map((tx: any) => (
-                  <TxListItem
-                    key={tx.publicKey.toString()}
-                    multisig={multisig}
-                    multisigAccount={multisigAccount}
-                    tx={tx}
-                  />
-                ))
-              )}
+              {renderItems(showExecuted, multisig, multisigAccount, transactions)
+                // transactions.map((tx: any) => (
+                //   <TxListItem
+                //     key={tx.publicKey.toString()}
+                //     multisig={multisig}
+                //     multisigAccount={multisigAccount}
+                //     tx={tx}
+                //   />
+                // ))
+              }
             </List>
           </Paper>
         )}
@@ -239,6 +234,52 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
   );
 }
 
+type MultisigTransaction = {
+  publicKey: PublicKey
+  account: {
+    didExecute: boolean
+  }
+}
+
+function renderItems(showExecuted: boolean, multisig: any, multisigAccount: any, transactions: MultisigTransaction[]) {
+  if (transactions === null) {
+    return <div style={{ padding: "16px" }}>
+      <CircularProgress
+        style={{
+          display: "block",
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      />
+    </div>
+  }
+  if (transactions.length === 0) {
+    return <ListItem>
+      <ListItemText primary="No transactions found" />
+    </ListItem>
+  }
+  let result = []
+  for (let tx of transactions) {
+    // hardcoded - ignore/hide marinade deprecated txs
+    // TODO - add "deprecated" condition to a tx (BE)
+    const key = tx.publicKey.toBase58()
+    if (key !== "AsaE7fbkmBTbq3MGKNZ15w1eUY9nikzafn7TvNn9ZvQf"
+      && key !== "2qito92LRcGsE4wgmxTUdeBhYoDicjEi8CAM3rPbi8cQ"
+      && key !== "7F5aEkm5PHDWAEe7WgT12q8Anijkx6gXQq8hATdhV7Rr"
+    )
+      if (showExecuted || !tx.account.didExecute) {
+        result.push(
+          <TxListItem
+            key={tx.publicKey.toString()}
+            multisig={multisig}
+            multisigAccount={multisigAccount}
+            tx={tx}
+          />)
+      }
+  }
+  return result
+}
+
 export function NewMultisigDialog({
   open,
   onClose,
@@ -247,7 +288,7 @@ export function NewMultisigDialog({
   onClose: () => void;
 }) {
   const history = useHistory();
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   const { enqueueSnackbar } = useSnackbar();
   const [threshold, setThreshold] = useState(2);
   // @ts-ignore
@@ -261,6 +302,8 @@ export function NewMultisigDialog({
   const [maxParticipantLength, setMaxParticipantLength] = useState(10);
   const disableCreate = maxParticipantLength < participants.length;
   const createMultisig = async () => {
+    if (!multisigClient?.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     enqueueSnackbar("Creating multisig", {
       variant: "info",
     });
@@ -377,6 +420,49 @@ export function NewMultisigDialog({
   );
 }
 
+/**
+* Formats a BN with commas and 5,2, or 0 decimal places
+* @param {number} bn 
+*/
+export function toStringDecMin(bn: BN, decimals: number): string {
+  return addCommas(removeDecZeroes(withDecimalPoint(bn, decimals)));
+}
+function withDecimalPoint(bn: BN, decimals: number): string {
+  const s = bn.toString().padStart(decimals + 1, '0')
+  const l = s.length
+  return s.slice(0, l - decimals) + '.' + s.slice(-decimals)
+}
+
+/**
+* removes extra zeroes after the decimal point
+* it leaves >4,2, or none (never 3 to not confuse the international user)
+* @param {string} withDecPoint
+*/
+export function removeDecZeroes(withDecPoint: string): string {
+  let decPointPos = withDecPoint.indexOf('.')
+  if (decPointPos <= 0) return withDecPoint;
+  let decimals = withDecPoint.length - decPointPos - 1;
+  while (withDecPoint.endsWith("0") && decimals-- > 4) withDecPoint = withDecPoint.slice(0, -1);
+  if (withDecPoint.endsWith("00")) withDecPoint = withDecPoint.slice(0, -2)
+  if (withDecPoint.endsWith(".00")) withDecPoint = withDecPoint.slice(0, -3)
+  return withDecPoint;
+}
+/**
+ * adds commas to a string number 
+ * @param {string} str 
+ */
+export function addCommas(str: string) {
+  let n = str.indexOf(".")
+  if (n === -1) n = str.length
+  n -= 4
+  while (n >= 0) {
+    str = str.slice(0, n + 1) + "," + str.slice(n + 1)
+    n = n - 3
+  }
+  return str;
+}
+
+
 function TxListItem({
   multisig,
   multisigAccount,
@@ -387,17 +473,46 @@ function TxListItem({
   tx: any;
 }) {
   const { enqueueSnackbar } = useSnackbar();
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   const [open, setOpen] = useState(false);
   const [txAccount, setTxAccount] = useState(tx.account);
   useEffect(() => {
-    multisigClient.account.transaction
+    multisigClient?.account.transaction
       .subscribe(tx.publicKey)
       .on("change", (account) => {
         setTxAccount(account);
       });
   }, [multisigClient, multisig, tx.publicKey]);
+
+  let txData = fromUint8ArrayToBase64(txAccount.data)
+  let translated = "";
+  if (txAccount.programId.toString() === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" &&
+    txAccount.data[0] === 3 // 3=>SPL-Token-Transfer
+  ) {
+    let slice = txAccount.data.slice(1, 9);
+    let amount = new BN(slice, 'le').fromTwos(64);
+    // marinade patch - until we move to SPL-gov
+    const from = txAccount.accounts[0].pubkey.toBase58()
+    const MarinadeUSDCAta = "9vKwu77KUVgmAYrB96PPMHrZtnvJXs9aKzFxfa71gDTX"
+    const decimals = from === MarinadeUSDCAta ? 6 : 9
+    const units = from === MarinadeUSDCAta ? " USDC" : ""
+    translated = "Transfer " + toStringDecMin(amount, decimals) + units + " from " + from + " to " + txAccount.accounts[1].pubkey.toBase58();
+  }
+  // TODO - include Marinade.IDL and decode instruction Data
+  /*else if (txAccount.programId.toString() === "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD" &&
+    txData.startsWith("QwMicr")) {
+    translated = "Marinade"
+    let slice = txAccount.data.slice(8, 8 + 3);
+    let bn = new BN(slice, 'le').fromTwos(64);
+    translated = bn.toString()
+  }
+  */
+
   const rows = [
+    {
+      field: "Decoded",
+      value: translated,
+    },
     {
       field: "Program ID",
       value: txAccount.programId.toString(),
@@ -419,7 +534,7 @@ function TxListItem({
             textAlign: "left",
           }}
         >
-          {fromUint8ArrayToBase64(txAccount.data)}
+          {txData}
         </code>
       ),
     },
@@ -445,7 +560,7 @@ function TxListItem({
     }
   );
   const approve = async () => {
-    if (!multisigClient.provider.wallet.publicKey)
+    if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
     enqueueSnackbar("Approving transaction", {
       variant: "info",
@@ -465,6 +580,8 @@ function TxListItem({
     enqueueSnackbar("Executing transaction", {
       variant: "info",
     });
+    if (!multisigClient?.provider.wallet.publicKey)
+      throw Error("Wallet not connected");
     const [multisigSigner] = await PublicKey.findProgramAddress(
       [multisig.toBuffer()],
       multisigClient.programId
@@ -530,7 +647,7 @@ function TxListItem({
                 execute().catch((err) => {
                   let errStr = "";
                   if (err) {
-                    errStr = err.toString();
+                    errStr = err.toString() + '\n' + err.logs? err.logs.join('\n'):"" 
                   }
                   enqueueSnackbar(`Unable to execute transaction: ${errStr}`, {
                     variant: "error",
@@ -683,14 +800,17 @@ function SignerDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   const [signer, setSigner] = useState<null | string>(null);
+
   useEffect(() => {
-    PublicKey.findProgramAddress(
-      [multisig.toBuffer()],
-      multisigClient.programId
-    ).then((addrNonce) => setSigner(addrNonce[0].toString()));
-  }, [multisig, multisigClient.programId, setSigner]);
+    if (multisigClient) {
+      PublicKey.findProgramAddress(
+        [multisig.toBuffer()],
+        multisigClient.programId
+      ).then((addrNonce) => setSigner(addrNonce[0].toString()));
+    }
+  }, [multisig, multisigClient, setSigner]);
   return (
     <Dialog open={open} fullWidth onClose={onClose} maxWidth="md">
       <DialogTitle>
@@ -756,6 +876,11 @@ function AddTransactionDialog({
           transaction.
         </DialogContentText>
         <List disablePadding>
+          <TransferMNDEListItem
+            didAddTransaction={didAddTransaction}
+            multisig={multisig}
+            onClose={onClose}
+          />
           <ProgramUpdateListItem
             didAddTransaction={didAddTransaction}
             multisig={multisig}
@@ -822,11 +947,11 @@ function ChangeThresholdListItemDetails({
   didAddTransaction: (tx: PublicKey) => void;
 }) {
   const [threshold, setThreshold] = useState(2);
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   // @ts-ignore
   const { enqueueSnackbar } = useSnackbar();
   const changeThreshold = async () => {
-    if (!multisigClient.provider.wallet.publicKey)
+    if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
     enqueueSnackbar("Creating change threshold transaction", {
       variant: "info",
@@ -943,13 +1068,13 @@ function SetOwnersListItemDetails({
   onClose: Function;
   didAddTransaction: (tx: PublicKey) => void;
 }) {
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   // @ts-ignore
   const zeroAddr = PublicKey.default.toString();
   const [participants, setParticipants] = useState([zeroAddr]);
   const { enqueueSnackbar } = useSnackbar();
   const setOwners = async () => {
-    if (!multisigClient.provider.wallet.publicKey)
+    if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
     enqueueSnackbar("Creating setOwners transaction", {
       variant: "info",
@@ -1049,6 +1174,151 @@ function SetOwnersListItemDetails({
   );
 }
 
+function TransferMNDEListItem({
+  multisig,
+  onClose,
+  didAddTransaction,
+}: {
+  multisig: PublicKey;
+  onClose: Function;
+  didAddTransaction: (tx: PublicKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ListItem button onClick={() => setOpen((open) => !open)}>
+        <ListItemIcon>
+          <AccountBalanceWallet />
+        </ListItemIcon>
+        <ListItemText primary={"Transfer MNDE"} />
+        {open ? <ExpandLess /> : <ExpandMore />}
+      </ListItem>
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <TransferMNDEListItemDetails
+          didAddTransaction={didAddTransaction}
+          multisig={multisig}
+          onClose={onClose}
+        />
+      </Collapse>
+    </>
+  );
+}
+
+function TransferMNDEListItemDetails({
+  multisig,
+  onClose,
+  didAddTransaction,
+}: {
+  multisig: PublicKey;
+  onClose: Function;
+  didAddTransaction: (tx: PublicKey) => void;
+}) {
+  const [destinationAccount, setDestinationAccount] = useState<null | string>(null);
+  const [amount, setAmount] = useState<null | number>(null);
+
+  const state = store.getState()
+
+  const { multisigClient } = useMultisig();
+  const { enqueueSnackbar } = useSnackbar();
+  const transferMNDE = async () => {
+    try {
+      if (!multisigClient?.provider.wallet.publicKey) {
+        throw Error("Wallet not connected");
+      }
+
+      enqueueSnackbar("Creating Transfer MNDE transaction", {
+        variant: "info",
+      });
+
+      const [multisigSigner] = await PublicKey.findProgramAddress(
+        [multisig.toBuffer()],
+        multisigClient.programId
+      );
+
+      if (!destinationAccount) throw Error("destinationAccount is nothing")
+      if (!amount || amount <= 0) throw Error("amount must be >=0")
+      const splTransferInstruction = await mndeTransferInstruction(state.common.network.url, multisigClient, multisigSigner, destinationAccount, amount);
+      const independentAccountToStoreMultisigInstruction = new Account();
+      const txSize = 207; // pre-computed
+      const tx = await multisigClient.rpc.createTransaction(
+        splTransferInstruction.programId,
+        splTransferInstruction.keys,
+        splTransferInstruction.data,
+        {
+          accounts: {
+            multisig,
+            transaction: independentAccountToStoreMultisigInstruction.publicKey,
+            proposer: multisigClient.provider.wallet.publicKey,
+            rent: SYSVAR_RENT_PUBKEY,
+          },
+          // we need to sign with the account to create it
+          signers: [independentAccountToStoreMultisigInstruction],
+          // before invoking createTransaction, create an empty account to store it
+          instructions: [
+            await multisigClient.account.transaction.createInstruction(
+              independentAccountToStoreMultisigInstruction,
+              // @ts-ignore
+              txSize
+            ),
+          ],
+        }
+      );
+
+      console.log(destinationAccount, amount);
+      enqueueSnackbar("Transaction created", {
+        variant: "success",
+        action: <ViewTransactionOnExplorerButton signature={tx} />,
+      });
+      didAddTransaction(independentAccountToStoreMultisigInstruction.publicKey);
+      onClose();
+    } 
+    catch (ex) {
+      enqueueSnackbar("Error", {
+        variant: "error",
+        action: ex.message + "<br>" + ex.logs? ex.logs.join("<br>"):"",
+      });
+    }
+  };
+
+  return (
+    <div
+      style={{
+        background: "#f1f0f0",
+        paddingLeft: "24px",
+        paddingRight: "24px",
+      }}
+    >
+      <TextField
+        fullWidth
+        style={{ marginTop: "16px" }}
+        label="Destination account"
+        value={destinationAccount}
+        onChange={(e) => setDestinationAccount(e.target.value as string)}
+      />
+      <TextField
+        style={{ marginTop: "16px" }}
+        fullWidth
+        label="Amount to transfer"
+        value={amount}
+        type="number"
+        onChange={(e) => setAmount(Number(e.target.value))}
+      />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: "16px",
+          paddingBottom: "16px",
+        }}
+      >
+        <Button onClick={() => transferMNDE()}>
+          Propose MNDE Transfer
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function IdlUpgradeListItem({
   multisig,
   onClose,
@@ -1091,10 +1361,10 @@ function UpgradeIdlListItemDetails({
   const [programId, setProgramId] = useState<null | string>(null);
   const [buffer, setBuffer] = useState<null | string>(null);
 
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
-    if (!multisigClient.provider.wallet.publicKey)
+    if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
     enqueueSnackbar("Creating transaction", {
       variant: "info",
@@ -1231,10 +1501,10 @@ function UpgradeProgramListItemDetails({
   const [programId, setProgramId] = useState<null | string>(null);
   const [buffer, setBuffer] = useState<null | string>(null);
 
-  const { multisigClient } = useWallet();
+  const { multisigClient } = useMultisig();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
-    if (!multisigClient.provider.wallet.publicKey)
+    if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
     enqueueSnackbar("Creating transaction", {
       variant: "info",

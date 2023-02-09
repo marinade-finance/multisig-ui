@@ -54,6 +54,22 @@ export type CommonState = {
 export const networks: Networks = {
   mainnet: {
     // Cluster.
+    label: "marinade.rpcpool.com",
+    url: "https://marinade.rpcpool.com",
+    explorerClusterSuffix: "",
+    multisigProgramId: new PublicKey(
+      "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
+    ),
+    multisigUpgradeAuthority: new PublicKey(
+      "EYpNb3zURb2C9TuVexxV5kf5mwsDc5ziSJJKyKF2wJTW"
+    ),
+    defaultMultisig: new PublicKey(
+      "9aN4drMhmd8AX3eRdYvH1gbZiPmwgGJfjvneCECF97HD" // multisig-4 treasury
+      // "7mSA2bgzmUCi4wh16NQEfT76XMqJULni6sheZRCjcyx7" // multisig-3 admin
+    ),
+  },
+  mainnet1: {
+    // Cluster.
     label: "Mainnet Beta",
     url: "https://marinade.rpcpool.com",
     explorerClusterSuffix: "",
@@ -64,11 +80,8 @@ export const networks: Networks = {
       "EYpNb3zURb2C9TuVexxV5kf5mwsDc5ziSJJKyKF2wJTW"
     ),
     defaultMultisig: new PublicKey(
-      "7mSA2bgzmUCi4wh16NQEfT76XMqJULni6sheZRCjcyx7" // multisig-3 admin
-      //"EYpNb3zURb2C9TuVexxV5kf5mwsDc5ziSJJKyKF2wJTW" // multisig-1 upgrade multisig
-      //"6FhtU8Q9bbuhKeRDFL7H7NeMxa1EqL5KP7HU9XRGSyRy" // multisig-2 upgrade marinade
-      //"7mSA2bgzmUCi4wh16NQEfT76XMqJULni6sheZRCjcyx7" // multisig-3 admin
-      //"9aN4drMhmd8AX3eRdYvH1gbZiPmwgGJfjvneCECF97HD" // multisig-4 treasury
+      "9aN4drMhmd8AX3eRdYvH1gbZiPmwgGJfjvneCECF97HD" // multisig-4 treasury
+      // "7mSA2bgzmUCi4wh16NQEfT76XMqJULni6sheZRCjcyx7" // multisig-3 admin
     ),
   },
   testnet: {

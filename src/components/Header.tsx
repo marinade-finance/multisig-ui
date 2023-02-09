@@ -1,7 +1,6 @@
-import React, { useState, useEffect, ReactElement } from "react";
+import { useState, ReactElement } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
-import { useSnackbar } from "notistack";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
 import Select from "@material-ui/core/Select";
@@ -12,15 +11,15 @@ import MenuItem from "@material-ui/core/MenuItem";
 import IconButton from "@material-ui/core/IconButton";
 import ExitToAppIcon from "@material-ui/icons/ExitToApp";
 import Button from "@material-ui/core/Button";
-import PersonIcon from "@material-ui/icons/Person";
 import BubbleChartIcon from "@material-ui/icons/BubbleChart";
 import SearchIcon from "@material-ui/icons/Search";
 import { PublicKey } from "@solana/web3.js";
 import { networks, State as StoreState, ActionType } from "../store/reducer";
-import { useWallet } from "./WalletProvider";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Wallet } from "@solana/wallet-adapter-wallets";
 
 export default function Header() {
-  const { wallet } = useWallet();
+  const { publicKey } = useWallet();
   const history = useHistory();
   const [multisigAddress, setMultisigAddress] = useState("");
   const disabled = !isValidPubkey(multisigAddress);
@@ -46,9 +45,9 @@ export default function Header() {
         >
           <div style={{ display: "flex", flex: 1 }}>
             <SerumLogoButton />
-            <BarButton label="Multisig" hrefClient="/" />
-            <BarButton label="Admin" hrefClient="/7mSA2bgzmUCi4wh16NQEfT76XMqJULni6sheZRCjcyx7" />
+            <BarButton label="Multisig UI" hrefClient="/" />
             <BarButton label="Treasury" hrefClient="/9aN4drMhmd8AX3eRdYvH1gbZiPmwgGJfjvneCECF97HD" />
+            <BarButton label="Admin" hrefClient="/7mSA2bgzmUCi4wh16NQEfT76XMqJULni6sheZRCjcyx7" />
             <div
               style={{
                 marginLeft: "16px",
@@ -88,10 +87,10 @@ export default function Header() {
             }}
           >
             <NetworkSelector />
-            {!wallet.publicKey ? (
+            {!publicKey ? (
               <WalletConnectButton
                 style={{
-                  display: wallet.publicKey ? "none" : "",
+                  display: publicKey ? "none" : "",
                 }}
               />
             ) : (
@@ -236,7 +235,7 @@ function NetworkSelector() {
 }
 
 function UserSelector() {
-  const { wallet } = useWallet();
+  const { publicKey, disconnect } = useWallet();
 
   return (
     <Select
@@ -244,7 +243,7 @@ function UserSelector() {
       renderValue={() => {
         return (
           <Typography style={{ overflow: "hidden" }}>
-            {wallet.publicKey?.toString()}
+            {publicKey?.toString()}
           </Typography>
         );
       }}
@@ -254,7 +253,7 @@ function UserSelector() {
       }}
       onChange={(e) => {
         if (e.target.value === "disconnect") {
-          wallet.disconnect();
+          disconnect();
         }
       }}
     >
@@ -275,61 +274,62 @@ type WalletConnectButtonProps = {
 export function WalletConnectButton(
   props: WalletConnectButtonProps
 ): ReactElement {
-  const { showDisconnect } = useSelector((state: StoreState) => {
-    return {
-      showDisconnect: state.common.isWalletConnected,
-    };
-  });
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
   const dispatch = useDispatch();
-  const { wallet, multisigClient } = useWallet();
-  const { enqueueSnackbar } = useSnackbar();
+  const { wallets, connect, disconnect, select } = useWallet();
 
-  // Wallet connection event listeners.
-  useEffect(() => {
-    wallet.on("disconnect", () => {
-      enqueueSnackbar("Disconnected from wallet", {
-        variant: "info",
-        autoHideDuration: 2500,
-      });
-      dispatch({
-        type: ActionType.CommonWalletDidDisconnect,
-        item: {},
-      });
-      dispatch({
-        type: ActionType.CommonTriggerShutdown,
-        item: {},
-      });
-    });
-    wallet.on("connect", async () => {
+  const connectWallet = async (selectedWallet: Wallet) => {
+    try {
+      select(selectedWallet.name)
+      await connect();
       dispatch({
         type: ActionType.CommonWalletDidConnect,
         item: {},
       });
-    });
-  }, [wallet, dispatch, enqueueSnackbar, multisigClient.provider.connection]);
+    } catch (e) {
+      console.log(e);
+      await disconnect();
+    }
+  }
 
-  return showDisconnect ? (
-    <Button
-      style={props.style}
-      color="inherit"
-      onClick={() => wallet.disconnect()}
-    >
-      <ExitToAppIcon />
-      <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
-        Disconnect
-      </Typography>
-    </Button>
-  ) : (
-    <Button
-      style={props.style}
-      color="inherit"
-      onClick={() => wallet.connect()}
-    >
-      <PersonIcon />
-      <Typography style={{ marginLeft: "5px", fontSize: "15px" }}>
-        Connect wallet
-      </Typography>
-    </Button>
+  return (
+    <>
+      <Button
+        id="demo-positioned-button"
+        aria-controls={open ? 'demo-positioned-menu' : undefined}
+        aria-haspopup="true"
+        aria-expanded={open ? 'true' : undefined}
+        onClick={handleClick}
+      >
+        Select wallet
+      </Button>
+      <Menu
+        id="demo-positioned-menu"
+        aria-labelledby="demo-positioned-button"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        {wallets.map((walletItem, i) => {     
+          return (<MenuItem key={walletItem.name} onClick={() => connectWallet(walletItem)}>{walletItem.name}</MenuItem>) 
+        })}
+      </Menu>
+    </>
   );
 }
 

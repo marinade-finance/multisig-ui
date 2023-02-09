@@ -1,4 +1,3 @@
-import React from "react";
 import { useSelector } from "react-redux";
 import Button from "@material-ui/core/Button";
 import { TransactionSignature } from "@solana/web3.js";
@@ -25,7 +24,7 @@ export async function withTx(
       action: <ViewTransactionOnExplorerButton signature={tx} />,
     });
   } catch (err) {
-    snack.enqueueSnackbar(`Error: ${err.toString()}`, {
+    snack.enqueueSnackbar(`Error: ${(err as Error).message}`, {
       variant: "error",
     });
   }
