@@ -48,6 +48,7 @@ import {
   PublicKey,
   SYSVAR_RENT_PUBKEY,
   SYSVAR_CLOCK_PUBKEY,
+  Transaction,
 } from "@solana/web3.js";
 import { ViewTransactionOnExplorerButton } from "./Notification";
 import * as idl from "../utils/idl";
@@ -56,6 +57,7 @@ import { useMultisig } from "./MultisigProvider";
 import { AccountBalanceWallet } from "@material-ui/icons";
 import { mndeTransferInstruction } from "../commands/mnde_transfer";
 import { store } from "../store";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 // Seed for generating the idlAddress.
 function seed(): string {
@@ -474,6 +476,7 @@ function TxListItem({
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const { multisigClient } = useMultisig();
+  const { sendTransaction } = useWallet();
   const [open, setOpen] = useState(false);
   const [txAccount, setTxAccount] = useState(tx.account);
   useEffect(() => {
@@ -565,12 +568,30 @@ function TxListItem({
     enqueueSnackbar("Approving transaction", {
       variant: "info",
     });
-    await multisigClient.rpc.approve({
+    const ix = multisigClient.instruction.approve({
       accounts: {
         multisig,
         transaction: tx.publicKey,
         owner: multisigClient.provider.wallet.publicKey,
       },
+    });
+    const t = new Transaction();
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+
+    const signature = await sendTransaction(
+      t,
+      multisigClient.provider.connection,
+      { minContextSlot }
+    );
+
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature,
     });
     enqueueSnackbar("Transaction approved", {
       variant: "success",
@@ -586,7 +607,7 @@ function TxListItem({
       [multisig.toBuffer()],
       multisigClient.programId
     );
-    await multisigClient.rpc.executeTransaction({
+    const ix = multisigClient.instruction.executeTransaction({
       accounts: {
         multisig,
         multisigSigner,
@@ -604,6 +625,24 @@ function TxListItem({
           isWritable: false,
           isSigner: false,
         }),
+    });
+    const t = new Transaction();
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+
+    const signature = await sendTransaction(
+      t,
+      multisigClient.provider.connection,
+      { minContextSlot }
+    );
+
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature,
     });
     enqueueSnackbar("Transaction executed", {
       variant: "success",
