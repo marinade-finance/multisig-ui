@@ -32,7 +32,7 @@ See the section about [deployment](https://facebook.github.io/create-react-app/d
 
 ### `npm run deploy`
 
-after deploy on github pages
+This will create a prod build and will automatically push it to the github pages branch to be released.
 
 ### `npm eject`
 
