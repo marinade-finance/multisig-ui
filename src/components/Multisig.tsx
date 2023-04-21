@@ -1254,6 +1254,7 @@ function TransferMNDEListItemDetails({
 }) {
   const [destinationAccount, setDestinationAccount] = useState<null | string>(null);
   const [amount, setAmount] = useState<null | number>(null);
+  const { sendTransaction } = useWallet();
 
   const state = store.getState()
 
@@ -1279,7 +1280,7 @@ function TransferMNDEListItemDetails({
       const splTransferInstruction = await mndeTransferInstruction(state.common.network.url, multisigClient, multisigSigner, destinationAccount, amount);
       const independentAccountToStoreMultisigInstruction = new Account();
       const txSize = 207; // pre-computed
-      const tx = await multisigClient.rpc.createTransaction(
+      const ix = await multisigClient.instruction.createTransaction(
         splTransferInstruction.programId,
         splTransferInstruction.keys,
         splTransferInstruction.data,
@@ -1303,10 +1304,29 @@ function TransferMNDEListItemDetails({
         }
       );
 
+      const t = new Transaction();
+      t.add(ix);
+      const {
+        context: { slot: minContextSlot },
+        value: { blockhash, lastValidBlockHeight },
+      } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+
+      const signature = await sendTransaction(
+        t,
+        multisigClient.provider.connection,
+        { minContextSlot }
+      );
+
+      await multisigClient.provider.connection.confirmTransaction({
+        blockhash,
+        lastValidBlockHeight,
+        signature,
+      });
+
       console.log(destinationAccount, amount);
       enqueueSnackbar("Transaction created", {
         variant: "success",
-        action: <ViewTransactionOnExplorerButton signature={tx} />,
+        action: <ViewTransactionOnExplorerButton signature={signature} />,
       });
       didAddTransaction(independentAccountToStoreMultisigInstruction.publicKey);
       onClose();
