@@ -1290,21 +1290,16 @@ function TransferMNDEListItemDetails({
             transaction: independentAccountToStoreMultisigInstruction.publicKey,
             proposer: multisigClient.provider.wallet.publicKey,
             rent: SYSVAR_RENT_PUBKEY,
-          },
-          // we need to sign with the account to create it
-          signers: [independentAccountToStoreMultisigInstruction],
-          // before invoking createTransaction, create an empty account to store it
-          instructions: [
-            await multisigClient.account.transaction.createInstruction(
-              independentAccountToStoreMultisigInstruction,
-              // @ts-ignore
-              txSize
-            ),
-          ],
+          }
         }
       );
 
       const t = new Transaction();
+      t.add(await multisigClient.account.transaction.createInstruction(
+        independentAccountToStoreMultisigInstruction,
+        // @ts-ignore
+        txSize
+      ));
       t.add(ix);
       const {
         context: { slot: minContextSlot },
@@ -1314,7 +1309,10 @@ function TransferMNDEListItemDetails({
       const signature = await sendTransaction(
         t,
         multisigClient.provider.connection,
-        { minContextSlot }
+        {
+          minContextSlot,
+          signers: [independentAccountToStoreMultisigInstruction]
+        }
       );
 
       await multisigClient.provider.connection.confirmTransaction({
