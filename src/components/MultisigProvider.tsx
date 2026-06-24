@@ -13,7 +13,7 @@ import { State as StoreState } from "../store/reducer";
 import MultisigIdl from "../idl";
 import { useWallet } from "@solana/wallet-adapter-react";
 
-const MultisigContext = React.createContext<MultisigContextValues>({
+export const MultisigContext = React.createContext<MultisigContextValues>({
   multisigClient: null
 });
 
