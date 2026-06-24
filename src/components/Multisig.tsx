@@ -621,6 +621,7 @@ function TxListItem({
       context: { slot: minContextSlot },
       value: { blockhash, lastValidBlockHeight },
     } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
 
     const signature = await sendTransaction(
       t,
@@ -672,6 +673,7 @@ function TxListItem({
       context: { slot: minContextSlot },
       value: { blockhash, lastValidBlockHeight },
     } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
 
     const signature = await sendTransaction(
       t,
@@ -1081,6 +1083,7 @@ function ChangeThresholdListItemDetails({
       context: { slot: minContextSlot },
       value: { blockhash, lastValidBlockHeight },
     } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
     const tx = await sendTransaction(t, multisigClient.provider.connection, {
       minContextSlot,
       signers: [transaction],
@@ -1231,6 +1234,7 @@ function SetOwnersListItemDetails({
       context: { slot: minContextSlot },
       value: { blockhash, lastValidBlockHeight },
     } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
     const tx = await sendTransaction(t, multisigClient.provider.connection, {
       minContextSlot,
       signers: [transaction],
@@ -1397,6 +1401,7 @@ function TransferMNDEListItemDetails({
         context: { slot: minContextSlot },
         value: { blockhash, lastValidBlockHeight },
       } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+      t.recentBlockhash = blockhash;
 
       const signature = await sendTransaction(
         t,
@@ -1564,6 +1569,7 @@ function UpgradeIdlListItemDetails({
       context: { slot: minContextSlot },
       value: { blockhash, lastValidBlockHeight },
     } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
     const tx = await sendTransaction(t, multisigClient.provider.connection, {
       minContextSlot,
       signers: [transaction],
@@ -1745,6 +1751,7 @@ function UpgradeProgramListItemDetails({
       context: { slot: minContextSlot },
       value: { blockhash, lastValidBlockHeight },
     } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
     const tx = await sendTransaction(t, multisigClient.provider.connection, {
       minContextSlot,
       signers: [transaction],
