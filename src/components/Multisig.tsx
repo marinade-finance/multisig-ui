@@ -166,11 +166,15 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
     });
   }, [multisigClient, multisig, forceRefresh]);
   useEffect(() => {
-    multisigClient?.account.multisig
+    if (!multisigClient) return;
+    multisigClient.account.multisig
       .subscribe(multisig)
       .on("change", (account) => {
         setMultisigAccount(account);
       });
+    return () => {
+      multisigClient.account.multisig.unsubscribe(multisig);
+    };
   }, [multisigClient, multisig]);
   return (
     <MultisigContext.Provider value={{ multisigClient }}>
@@ -512,11 +516,15 @@ function TxListItem({
   const [open, setOpen] = useState(false);
   const [txAccount, setTxAccount] = useState(tx.account);
   useEffect(() => {
-    multisigClient?.account.transaction
+    if (!multisigClient) return;
+    multisigClient.account.transaction
       .subscribe(tx.publicKey)
       .on("change", (account) => {
         setTxAccount(account);
       });
+    return () => {
+      multisigClient.account.transaction.unsubscribe(tx.publicKey);
+    };
   }, [multisigClient, multisig, tx.publicKey]);
 
   let txData = fromUint8ArrayToBase64(txAccount.data)
