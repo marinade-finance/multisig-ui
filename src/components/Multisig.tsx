@@ -53,11 +53,13 @@ import {
 import { ViewTransactionOnExplorerButton } from "./Notification";
 import * as idl from "../utils/idl";
 import { networks } from "../store/reducer";
-import { useMultisig } from "./MultisigProvider";
+import { useMultisig, MultisigContext } from "./MultisigProvider";
 import { AccountBalanceWallet } from "@material-ui/icons";
 import { mndeTransferInstruction } from "../commands/mnde_transfer";
 import { store } from "../store";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { Program } from "@project-serum/anchor";
+import MultisigIdl from "../idl";
 
 // Seed for generating the idlAddress.
 function seed(): string {
@@ -112,13 +114,41 @@ function NewMultisigButton() {
 }
 
 export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
-  const { multisigClient } = useMultisig();
+  const { multisigClient: baseClient } = useMultisig();
+  // A multisig account can be owned by any deployment of the multisig program
+  // (e.g. the ecosystem multisig lives under a different program than the
+  // treasury/admin multisigs). Resolve the owning program from the account
+  // itself so each instance is read and signed against its real program.
+  const [multisigClient, setMultisigClient] = useState<Program | null>(null);
   const [multisigAccount, setMultisigAccount] = useState<any>(undefined);
   const [transactions, setTransactions] = useState<any>(null);
   const [showSignerDialog, setShowSignerDialog] = useState(false);
   const [showAddTransactionDialog, setShowAddTransactionDialog] = useState(false);
   const [showExecuted, setShowExecuted] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(false);
+  useEffect(() => {
+    if (!baseClient) {
+      setMultisigClient(null);
+      return;
+    }
+    let active = true;
+    baseClient.provider.connection
+      .getAccountInfo(multisig)
+      .then((info) => {
+        if (!active) return;
+        setMultisigClient(
+          info && !info.owner.equals(baseClient.programId)
+            ? new Program(MultisigIdl, info.owner, baseClient.provider)
+            : baseClient
+        );
+      })
+      .catch(() => {
+        if (active) setMultisigClient(baseClient);
+      });
+    return () => {
+      active = false;
+    };
+  }, [baseClient, multisig]);
   useEffect(() => {
     multisigClient?.account.multisig
       .fetch(multisig)
@@ -129,20 +159,25 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
         console.error(err);
         setMultisigAccount(null);
       });
-  }, [multisig, multisigClient?.account]);
+  }, [multisig, multisigClient]);
   useEffect(() => {
     multisigClient?.account.transaction.all(multisig.toBuffer()).then((txs) => {
       setTransactions(txs);
     });
-  }, [multisigClient?.account.transaction, multisig, forceRefresh]);
+  }, [multisigClient, multisig, forceRefresh]);
   useEffect(() => {
-    multisigClient?.account.multisig
+    if (!multisigClient) return;
+    multisigClient.account.multisig
       .subscribe(multisig)
       .on("change", (account) => {
         setMultisigAccount(account);
       });
+    return () => {
+      multisigClient.account.multisig.unsubscribe(multisig);
+    };
   }, [multisigClient, multisig]);
   return (
+    <MultisigContext.Provider value={{ multisigClient }}>
     <Container fixed maxWidth="md" style={{ marginBottom: "16px" }}>
       <div>
         <Card style={{ marginTop: "24px" }}>
@@ -233,6 +268,7 @@ export function MultisigInstance({ multisig }: { multisig: PublicKey }) {
         />
       )}
     </Container>
+    </MultisigContext.Provider>
   );
 }
 
@@ -480,11 +516,15 @@ function TxListItem({
   const [open, setOpen] = useState(false);
   const [txAccount, setTxAccount] = useState(tx.account);
   useEffect(() => {
-    multisigClient?.account.transaction
+    if (!multisigClient) return;
+    multisigClient.account.transaction
       .subscribe(tx.publicKey)
       .on("change", (account) => {
         setTxAccount(account);
       });
+    return () => {
+      multisigClient.account.transaction.unsubscribe(tx.publicKey);
+    };
   }, [multisigClient, multisig, tx.publicKey]);
 
   let txData = fromUint8ArrayToBase64(txAccount.data)
@@ -989,6 +1029,7 @@ function ChangeThresholdListItemDetails({
   const { multisigClient } = useMultisig();
   // @ts-ignore
   const { enqueueSnackbar } = useSnackbar();
+  const { sendTransaction } = useWallet();
   const changeThreshold = async () => {
     if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
@@ -1014,7 +1055,7 @@ function ChangeThresholdListItemDetails({
     ];
     const transaction = new Account();
     const txSize = 1000; // todo
-    const tx = await multisigClient.rpc.createTransaction(
+    const ix = multisigClient.instruction.createTransaction(
       multisigClient.programId,
       accounts,
       data,
@@ -1025,16 +1066,30 @@ function ChangeThresholdListItemDetails({
           proposer: multisigClient.provider.wallet.publicKey,
           rent: SYSVAR_RENT_PUBKEY,
         },
-        signers: [transaction],
-        instructions: [
-          await multisigClient.account.transaction.createInstruction(
-            transaction,
-            // @ts-ignore
-            txSize
-          ),
-        ],
       }
     );
+    const t = new Transaction();
+    t.add(
+      await multisigClient.account.transaction.createInstruction(
+        transaction,
+        // @ts-ignore
+        txSize
+      )
+    );
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    const tx = await sendTransaction(t, multisigClient.provider.connection, {
+      minContextSlot,
+      signers: [transaction],
+    });
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: tx,
+    });
     enqueueSnackbar("Transaction created", {
       variant: "success",
       action: <ViewTransactionOnExplorerButton signature={tx} />,
@@ -1062,7 +1117,18 @@ function ChangeThresholdListItemDetails({
         }}
       />
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button onClick={() => changeThreshold()}>Change Threshold</Button>
+        <Button
+          onClick={() =>
+            changeThreshold().catch((err) => {
+              enqueueSnackbar(
+                `Unable to create transaction: ${err ? err.toString() : ""}`,
+                { variant: "error" }
+              );
+            })
+          }
+        >
+          Change Threshold
+        </Button>
       </div>
     </div>
   );
@@ -1112,6 +1178,7 @@ function SetOwnersListItemDetails({
   const zeroAddr = PublicKey.default.toString();
   const [participants, setParticipants] = useState([zeroAddr]);
   const { enqueueSnackbar } = useSnackbar();
+  const { sendTransaction } = useWallet();
   const setOwners = async () => {
     if (!multisigClient?.provider.wallet.publicKey)
       throw Error("Wallet not connected");
@@ -1138,7 +1205,7 @@ function SetOwnersListItemDetails({
     ];
     const transaction = new Account();
     const txSize = 5000; // TODO: tighter bound.
-    const tx = await multisigClient.rpc.createTransaction(
+    const ix = multisigClient.instruction.createTransaction(
       multisigClient.programId,
       accounts,
       data,
@@ -1149,16 +1216,30 @@ function SetOwnersListItemDetails({
           proposer: multisigClient.provider.wallet.publicKey,
           rent: SYSVAR_RENT_PUBKEY,
         },
-        signers: [transaction],
-        instructions: [
-          await multisigClient.account.transaction.createInstruction(
-            transaction,
-            // @ts-ignore
-            txSize
-          ),
-        ],
       }
     );
+    const t = new Transaction();
+    t.add(
+      await multisigClient.account.transaction.createInstruction(
+        transaction,
+        // @ts-ignore
+        txSize
+      )
+    );
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    const tx = await sendTransaction(t, multisigClient.provider.connection, {
+      minContextSlot,
+      signers: [transaction],
+    });
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: tx,
+    });
     enqueueSnackbar("Transaction created", {
       variant: "success",
       action: <ViewTransactionOnExplorerButton signature={tx} />,
@@ -1207,7 +1288,18 @@ function SetOwnersListItemDetails({
           paddingBottom: "16px",
         }}
       >
-        <Button onClick={() => setOwners()}>Set Owners</Button>
+        <Button
+          onClick={() =>
+            setOwners().catch((err) => {
+              enqueueSnackbar(
+                `Unable to create transaction: ${err ? err.toString() : ""}`,
+                { variant: "error" }
+              );
+            })
+          }
+        >
+          Set Owners
+        </Button>
       </div>
     </div>
   );
@@ -1419,6 +1511,7 @@ function UpgradeIdlListItemDetails({
   const [buffer, setBuffer] = useState<null | string>(null);
 
   const { multisigClient } = useMultisig();
+  const { sendTransaction } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
     if (!multisigClient?.provider.wallet.publicKey)
@@ -1445,7 +1538,7 @@ function UpgradeIdlListItemDetails({
     ];
     const txSize = 1000; // TODO: tighter bound.
     const transaction = new Account();
-    const tx = await multisigClient.rpc.createTransaction(
+    const ix = multisigClient.instruction.createTransaction(
       programAddr,
       accs,
       data,
@@ -1456,16 +1549,30 @@ function UpgradeIdlListItemDetails({
           proposer: multisigClient.provider.wallet.publicKey,
           rent: SYSVAR_RENT_PUBKEY,
         },
-        signers: [transaction],
-        instructions: [
-          await multisigClient.account.transaction.createInstruction(
-            transaction,
-            // @ts-ignore
-            txSize
-          ),
-        ],
       }
     );
+    const t = new Transaction();
+    t.add(
+      await multisigClient.account.transaction.createInstruction(
+        transaction,
+        // @ts-ignore
+        txSize
+      )
+    );
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    const tx = await sendTransaction(t, multisigClient.provider.connection, {
+      minContextSlot,
+      signers: [transaction],
+    });
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: tx,
+    });
     enqueueSnackbar("Transaction created", {
       variant: "success",
       action: <ViewTransactionOnExplorerButton signature={tx} />,
@@ -1504,7 +1611,16 @@ function UpgradeIdlListItemDetails({
           paddingBottom: "16px",
         }}
       >
-        <Button onClick={() => createTransactionAccount()}>
+        <Button
+          onClick={() =>
+            createTransactionAccount().catch((err) => {
+              enqueueSnackbar(
+                `Unable to create transaction: ${err ? err.toString() : ""}`,
+                { variant: "error" }
+              );
+            })
+          }
+        >
           Create upgrade
         </Button>
       </div>
@@ -1559,6 +1675,7 @@ function UpgradeProgramListItemDetails({
   const [buffer, setBuffer] = useState<null | string>(null);
 
   const { multisigClient } = useMultisig();
+  const { sendTransaction } = useWallet();
   const { enqueueSnackbar } = useSnackbar();
   const createTransactionAccount = async () => {
     if (!multisigClient?.provider.wallet.publicKey)
@@ -1602,7 +1719,7 @@ function UpgradeProgramListItemDetails({
     ];
     const txSize = 1000; // TODO: tighter bound.
     const transaction = new Account();
-    const tx = await multisigClient.rpc.createTransaction(
+    const ix = multisigClient.instruction.createTransaction(
       BPF_LOADER_UPGRADEABLE_PID,
       accs,
       data,
@@ -1613,16 +1730,30 @@ function UpgradeProgramListItemDetails({
           proposer: multisigClient.provider.wallet.publicKey,
           rent: SYSVAR_RENT_PUBKEY,
         },
-        signers: [transaction],
-        instructions: [
-          await multisigClient.account.transaction.createInstruction(
-            transaction,
-            // @ts-ignore
-            txSize
-          ),
-        ],
       }
     );
+    const t = new Transaction();
+    t.add(
+      await multisigClient.account.transaction.createInstruction(
+        transaction,
+        // @ts-ignore
+        txSize
+      )
+    );
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    const tx = await sendTransaction(t, multisigClient.provider.connection, {
+      minContextSlot,
+      signers: [transaction],
+    });
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: tx,
+    });
     enqueueSnackbar("Transaction created", {
       variant: "success",
       action: <ViewTransactionOnExplorerButton signature={tx} />,
@@ -1661,7 +1792,16 @@ function UpgradeProgramListItemDetails({
           paddingBottom: "16px",
         }}
       >
-        <Button onClick={() => createTransactionAccount()}>
+        <Button
+          onClick={() =>
+            createTransactionAccount().catch((err) => {
+              enqueueSnackbar(
+                `Unable to create transaction: ${err ? err.toString() : ""}`,
+                { variant: "error" }
+              );
+            })
+          }
+        >
           Create upgrade
         </Button>
       </div>
