@@ -43,6 +43,14 @@ export default function MultisigProvider(
     // rent params instead: (ACCOUNT_STORAGE_OVERHEAD + dataLen) * lamportsPerByteYear * 2.
     (connection as any).getMinimumBalanceForRentExemption = async (dataLen: number) =>
       (128 + dataLen) * 2 * 3480;
+    // marinade.rpcpool.com rejects sendTransaction's minContextSlot param ("Invalid
+    // params"); the wallet adapter forwards it from our send options, so strip it here.
+    const sendRawTransaction = connection.sendRawTransaction.bind(connection);
+    (connection as any).sendRawTransaction = (rawTransaction: any, sendOpts: any = {}) => {
+      const stripped = { ...(sendOpts || {}) };
+      delete stripped.minContextSlot;
+      return sendRawTransaction(rawTransaction, stripped);
+    };
     const provider = new Provider(connection, wallet as any, opts);
 
     const multisigClient = new Program(
