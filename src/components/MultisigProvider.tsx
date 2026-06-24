@@ -37,6 +37,12 @@ export default function MultisigProvider(
       commitment: "recent",
     };
     const connection = new Connection(network.url, opts.preflightCommitment);
+    // marinade.rpcpool.com doesn't serve getMinimumBalanceForRentExemption, and web3.js
+    // silently returns 0 on its error — which creates non-rent-exempt proposal accounts
+    // that the program rejects (ConstraintRentExempt). Compute it from the fixed mainnet
+    // rent params instead: (ACCOUNT_STORAGE_OVERHEAD + dataLen) * lamportsPerByteYear * 2.
+    (connection as any).getMinimumBalanceForRentExemption = async (dataLen: number) =>
+      (128 + dataLen) * 2 * 3480;
     const provider = new Provider(connection, wallet as any, opts);
 
     const multisigClient = new Program(

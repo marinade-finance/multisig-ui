@@ -54,8 +54,8 @@ export type CommonState = {
 export const networks: Networks = {
   mainnet: {
     // Cluster.
-    label: "api.mainnet.solana.com",
-    url: "https://api.mainnet.solana.com",
+    label: "marinade.rpcpool.com",
+    url: "https://marinade.rpcpool.com",
     explorerClusterSuffix: "",
     multisigProgramId: new PublicKey(
       "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
@@ -71,7 +71,7 @@ export const networks: Networks = {
   mainnet1: {
     // Cluster.
     label: "Mainnet Beta",
-    url: "https://api.mainnet.solana.com",
+    url: "https://marinade.rpcpool.com",
     explorerClusterSuffix: "",
     multisigProgramId: new PublicKey(
       "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
