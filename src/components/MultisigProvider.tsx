@@ -32,9 +32,12 @@ export default function MultisigProvider(
   const wallet = useWallet();
 
   const { multisigClient } = useMemo(() => {
+    // web3.js forwards this Connection's commitment as sendTransaction's preflightCommitment,
+    // and current agave rejects the deprecated "recent" variant with -32602 "Invalid params:
+    // unknown variant `recent`". Use a current commitment level.
     const opts: ConfirmOptions = {
-      preflightCommitment: "recent",
-      commitment: "recent",
+      preflightCommitment: "confirmed",
+      commitment: "confirmed",
     };
     const connection = new Connection(network.url, opts.preflightCommitment);
     // marinade.rpcpool.com doesn't serve getMinimumBalanceForRentExemption, and web3.js
@@ -43,8 +46,9 @@ export default function MultisigProvider(
     // rent params instead: (ACCOUNT_STORAGE_OVERHEAD + dataLen) * lamportsPerByteYear * 2.
     (connection as any).getMinimumBalanceForRentExemption = async (dataLen: number) =>
       (128 + dataLen) * 2 * 3480;
-    // marinade.rpcpool.com rejects sendTransaction's minContextSlot param ("Invalid
-    // params"); the wallet adapter forwards it from our send options, so strip it here.
+    // The send sites pass minContextSlot from getLatestBlockhashAndContext; strip it so a
+    // lagging node in the pooled RPC can't reject the request. (The earlier "Invalid params"
+    // was the deprecated "recent" commitment above, not minContextSlot.)
     const sendRawTransaction = connection.sendRawTransaction.bind(connection);
     (connection as any).sendRawTransaction = (rawTransaction: any, sendOpts: any = {}) => {
       const stripped = { ...(sendOpts || {}) };
