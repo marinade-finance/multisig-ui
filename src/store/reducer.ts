@@ -58,7 +58,7 @@ export const networks: Networks = {
     url: "https://marinade.rpcpool.com",
     explorerClusterSuffix: "",
     multisigProgramId: new PublicKey(
-      "msigmtwzgXJHj2ext4XJjCDmpbcMuufFb5cHuwg6Xdt"
+      "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
     ),
     multisigUpgradeAuthority: new PublicKey(
       "EYpNb3zURb2C9TuVexxV5kf5mwsDc5ziSJJKyKF2wJTW"
@@ -74,7 +74,7 @@ export const networks: Networks = {
     url: "https://marinade.rpcpool.com",
     explorerClusterSuffix: "",
     multisigProgramId: new PublicKey(
-      "msigmtwzgXJHj2ext4XJjCDmpbcMuufFb5cHuwg6Xdt"
+      "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
     ),
     multisigUpgradeAuthority: new PublicKey(
       "EYpNb3zURb2C9TuVexxV5kf5mwsDc5ziSJJKyKF2wJTW"
@@ -120,7 +120,7 @@ export const networks: Networks = {
     url: "http://localhost:8899",
     explorerClusterSuffix: "localhost",
     multisigProgramId: new PublicKey(
-      "msigmtwzgXJHj2ext4XJjCDmpbcMuufFb5cHuwg6Xdt"
+      "H88LfRBiJLZ7wYkHGuwkKTaijfQxexq8JvzUndu7fyjL"
     ),
   },
 };

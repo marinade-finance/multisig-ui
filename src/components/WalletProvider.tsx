@@ -16,7 +16,7 @@ export default function WalletConnectionProvider(
   return (
     // wallet-adapter-react ships its own newer @types/react, whose ReactNode differs
     // from the app's @types/react@17; cast children to bridge the two type worlds.
-    <WalletProvider wallets={wallets}>
+    <WalletProvider wallets={wallets} autoConnect>
       {props.children as any}
     </WalletProvider>
   );

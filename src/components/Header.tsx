@@ -283,12 +283,14 @@ export function WalletConnectButton(
     setAnchorEl(null);
   };
   const dispatch = useDispatch();
-  const { wallets, connect, disconnect, select } = useWallet();
+  const { wallets, disconnect, select } = useWallet();
 
   const connectWallet = async (selectedWallet: Wallet) => {
     try {
       select(selectedWallet.adapter.name)
-      await connect();
+      // autoConnect (on WalletProvider) connects the selected wallet. The old
+      // `await connect()` here raced the not-yet-applied selection and mis-fired
+      // on the first click (connecting the default/wrong adapter).
       dispatch({
         type: ActionType.CommonWalletDidConnect,
         item: {},
