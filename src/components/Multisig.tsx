@@ -328,6 +328,7 @@ export function NewMultisigDialog({
   const history = useHistory();
   const { multisigClient } = useMultisig();
   const { enqueueSnackbar } = useSnackbar();
+  const { sendTransaction } = useWallet();
   const [threshold, setThreshold] = useState(2);
   // @ts-ignore
   const zeroAddr = PublicKey.default.toString();
@@ -359,7 +360,7 @@ export function NewMultisigDialog({
       multisigClient.programId
     );
     const owners = participants.map((p) => new PublicKey(p));
-    const tx = await multisigClient.rpc.createMultisig(
+    const ix = multisigClient.instruction.createMultisig(
       owners,
       new BN(threshold),
       nonce,
@@ -368,16 +369,31 @@ export function NewMultisigDialog({
           multisig: multisig.publicKey,
           rent: SYSVAR_RENT_PUBKEY,
         },
-        signers: [multisig],
-        instructions: [
-          await multisigClient.account.multisig.createInstruction(
-            multisig,
-            // @ts-ignore
-            multisigSize
-          ),
-        ],
       }
     );
+    const t = new Transaction();
+    t.add(
+      await multisigClient.account.multisig.createInstruction(
+        multisig,
+        // @ts-ignore
+        multisigSize
+      )
+    );
+    t.add(ix);
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await multisigClient.provider.connection.getLatestBlockhashAndContext();
+    t.recentBlockhash = blockhash;
+    const tx = await sendTransaction(t, multisigClient.provider.connection, {
+      minContextSlot,
+      signers: [multisig],
+    });
+    await multisigClient.provider.connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: tx,
+    });
     enqueueSnackbar(`Multisig created: ${multisig.publicKey.toString()}`, {
       variant: "success",
       action: <ViewTransactionOnExplorerButton signature={tx} />,
