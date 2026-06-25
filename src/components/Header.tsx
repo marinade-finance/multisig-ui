@@ -16,7 +16,7 @@ import SearchIcon from "@material-ui/icons/Search";
 import { PublicKey } from "@solana/web3.js";
 import { networks, State as StoreState, ActionType } from "../store/reducer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Wallet } from "@solana/wallet-adapter-wallets";
+import type { Wallet } from "@solana/wallet-adapter-react";
 
 export default function Header() {
   const { publicKey } = useWallet();
@@ -287,7 +287,7 @@ export function WalletConnectButton(
 
   const connectWallet = async (selectedWallet: Wallet) => {
     try {
-      select(selectedWallet.name)
+      select(selectedWallet.adapter.name)
       await connect();
       dispatch({
         type: ActionType.CommonWalletDidConnect,
@@ -326,7 +326,7 @@ export function WalletConnectButton(
         }}
       >
         {wallets.map((walletItem, i) => {     
-          return (<MenuItem key={walletItem.name} onClick={() => connectWallet(walletItem)}>{walletItem.name}</MenuItem>) 
+          return (<MenuItem key={walletItem.adapter.name} onClick={() => connectWallet(walletItem)}>{walletItem.adapter.name}</MenuItem>)
         })}
       </Menu>
     </>
