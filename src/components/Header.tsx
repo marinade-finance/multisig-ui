@@ -16,7 +16,7 @@ import SearchIcon from "@material-ui/icons/Search";
 import { PublicKey } from "@solana/web3.js";
 import { networks, State as StoreState, ActionType } from "../store/reducer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Wallet } from "@solana/wallet-adapter-wallets";
+import type { Wallet } from "@solana/wallet-adapter-react";
 
 export default function Header() {
   const { publicKey } = useWallet();
@@ -283,12 +283,14 @@ export function WalletConnectButton(
     setAnchorEl(null);
   };
   const dispatch = useDispatch();
-  const { wallets, connect, disconnect, select } = useWallet();
+  const { wallets, disconnect, select } = useWallet();
 
   const connectWallet = async (selectedWallet: Wallet) => {
     try {
-      select(selectedWallet.name)
-      await connect();
+      select(selectedWallet.adapter.name)
+      // autoConnect (on WalletProvider) connects the selected wallet. The old
+      // `await connect()` here raced the not-yet-applied selection and mis-fired
+      // on the first click (connecting the default/wrong adapter).
       dispatch({
         type: ActionType.CommonWalletDidConnect,
         item: {},
@@ -326,7 +328,7 @@ export function WalletConnectButton(
         }}
       >
         {wallets.map((walletItem, i) => {     
-          return (<MenuItem key={walletItem.name} onClick={() => connectWallet(walletItem)}>{walletItem.name}</MenuItem>) 
+          return (<MenuItem key={walletItem.adapter.name} onClick={() => connectWallet(walletItem)}>{walletItem.adapter.name}</MenuItem>)
         })}
       </Menu>
     </>
